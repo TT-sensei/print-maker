@@ -9,7 +9,7 @@
   const PARTS = [
     ['heading','見出し','▰'],['text','説明','☰'],['goal','めあて','◎'],['question','問題','?'],['answerline','一行解答','＿'],
     ['ruled','記述','≡'],['calc','計算','＋'],['grid','方眼','▦'],['choice','選択問題','☑'],['table','表','▤'],['image','画像','▧'],
-    ['navi','NAVI','☺'],['summary','まとめ','✓'],['reflection','振り返り','↗'],['score','得点欄','点']
+    ['navi','NAVI','☺'],['summary','まとめ','✓'],['reflection','ふりかえり','↗'],['score','得点欄','点']
   ];
   const NAVI_BASE = 'https://tt-sensei.github.io/navi-character-/assets/web/groups/learning/';
   const NAVI = [
@@ -75,7 +75,7 @@
     {id:'science',icon:'⚗',name:'理科',desc:'予想・結果・考察',subject:'science',build:w=>addPreset(w,[['goal',{}],['heading',{content:'予想'}],['ruled',{height:25}],['heading',{content:'実験・観察'}],['text',{content:'方法や注意点を書きます。',frame:true}],['heading',{content:'結果'}],['ruled',{height:30}],['summary',{content:'考察・まとめ'}],['ruled',{height:30}]])},
     {id:'social',icon:'地',name:'社会',desc:'資料・問題・まとめ',subject:'social',build:w=>addPreset(w,[['heading',{content:'資料'}],['image',{}],['question',{}],['ruled',{height:35}],['summary',{}]])},
     {id:'test',icon:'点',name:'ミニテスト',desc:'得点欄と問題',subject:'other',build:w=>addPreset(w,[['score',{}],['question',{}],['answerline',{}],['question',{}],['answerline',{}],['question',{}],['answerline',{}]])},
-    {id:'reflection',icon:'↗',name:'振り返り',desc:'できたことと次の目標',subject:'other',build:w=>addPreset(w,[['goal',{content:'今日のめあて'}],['reflection',{content:'できたこと',height:24}],['reflection',{content:'わかったこと',height:30}],['reflection',{content:'次にがんばること',height:24}]])}
+    {id:'reflection',icon:'↗',name:'ふりかえり',desc:'できたことと次の目標',subject:'other',build:w=>addPreset(w,[['goal',{content:'今日のめあて'}],['reflection',{content:'できたこと',height:24}],['reflection',{content:'わかったこと',height:30}],['reflection',{content:'次にがんばること',height:24}]])}
   ];
   function addPreset(w, list){ w.blocks=list.map(([t,o])=>makeBlock(t,o)); return w; }
 
@@ -217,7 +217,7 @@
     if(b.type==='choice'){const marks=b.marker==='number'?['①','②','③','④','⑤','⑥']:['ア','イ','ウ','エ','オ','カ'];body=`<div class="block-question">${qNum}<div style="flex:1"><div class="content">${nl(b.content)}</div><div class="choices">${(b.choices||[]).map((x,i)=>`<div><span class="choice-mark">${marks[i]}</span>${nl(x)}</div>`).join('')}</div>${displayMode==='teacher'&&b.answer?`<div class="answer-display">答　${nl(b.answer)}</div>`:''}</div></div>`;}
     if(b.type==='table'){body=`<table class="worksheet-table"><tbody>${Array.from({length:b.rows||2},(_,r)=>`<tr>${Array.from({length:b.cols||2},(_,c)=>{const i=r*(b.cols||2)+c;return `<td contenteditable="true" data-table-cell="${i}">${nl((b.cells||[])[i]||'')}</td>`}).join('')}</tr>`).join('')}</tbody></table>`;}
     if(b.type==='image'||b.type==='navi') body=b.imageUrl?`<img src="${esc(b.imageUrl)}" alt="${b.type==='navi'?'学習イラスト':'挿入画像'}">`:'<div class="placeholder-image">画像を選んでください</div>';
-    if(b.type==='reflection') body=`<div class="reflection-label">${nl(b.content)}</div><div class="ruled-area"></div>`;
+    if(b.type==='reflection') body=`<div class="reflection-heading">ふりかえり</div><div class="reflection-label">${nl(b.content)}</div><div class="ruled-area"></div>`;
     if(b.type==='score') body=`<div class="score-line">${esc(b.content||'得点')}　　／ ${Number(b.total)||100} 点</div>`;
     return `<section class="${blockClasses(b)}" style="${style}" data-id="${b.id}">${actionBar()}${body}</section>`;
   }
@@ -298,7 +298,13 @@
 
   function openPreview(){renderPagesInto($('#previewPages'),false);$('#previewOverlay').classList.remove('hidden');}
   function closePreview(){$('#previewOverlay').classList.add('hidden');}
-  function printWorksheet(){document.body.classList.toggle('print-landscape',worksheet.orientation==='landscape');setTimeout(()=>window.print(),50);}
+  function printWorksheet(){
+    document.body.classList.toggle('print-landscape',worksheet.orientation==='landscape');
+    let style=document.getElementById('printOrientationStyle');
+    if(!style){style=document.createElement('style');style.id='printOrientationStyle';document.head.appendChild(style);}
+    style.textContent=`@page{size:A4 ${worksheet.orientation==='landscape'?'landscape':'portrait'};margin:0}`;
+    setTimeout(()=>window.print(),50);
+  }
   function setZoom(v){zoom=Math.max(.4,Math.min(1.1,Math.round(v*10)/10));$('#zoomLabel').textContent=Math.round(zoom*100)+'%';document.documentElement.style.setProperty('--zoom',zoom);}
   function switchMobilePanel(name){const map={parts:'#partsPanel',canvas:'#canvasPanel',settings:'#settingsPanel'};$$('.mobile-tabs button').forEach(x=>x.classList.toggle('active',x.dataset.panel===name));$$('.workspace> *').forEach(x=>x.classList.remove('active'));$(map[name])?.classList.add('active');}
   function openModal(title,kicker,body){$('#modalTitle').textContent=title;$('#modalKicker').textContent=kicker;$('#modalBody').innerHTML=body;$('#modal').classList.remove('hidden');}
