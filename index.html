@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#315b52">
+  <title>プリント工房</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <section id="startScreen" class="start-screen">
+    <div class="start-card">
+      <div class="brand-mark" aria-hidden="true">▤</div>
+      <p class="eyebrow">先生のための、すぐ使えるプリント作り</p>
+      <h1>プリント工房</h1>
+      <p class="subtitle">パーツを組み合わせて、かんたんプリント作り</p>
+      <div class="start-actions">
+        <button class="start-action primary" data-start="new"><span>＋</span><b>新しいプリントを作る</b><small>教科や用途からひな形を選ぶ</small></button>
+        <button class="start-action" data-start="continue"><span>↻</span><b>前の続きを作る</b><small id="draftInfo">自動保存した続きから</small></button>
+        <button class="start-action" data-start="templates"><span>▣</span><b>マイテンプレート</b><small>いつもの形を使って作る</small></button>
+      </div>
+      <p class="local-note">データはこの端末のブラウザに保存されます</p>
+    </div>
+  </section>
+
+  <div id="editor" class="editor hidden">
+    <header class="app-header no-print">
+      <button class="brand-button" id="homeBtn" aria-label="スタート画面へ"><span>▤</span><b>プリント工房</b></button>
+      <nav class="toolbar" aria-label="編集操作">
+        <button id="newBtn">新規</button><button id="saveBtn">保存</button><button id="templatesBtn">マイテンプレート</button>
+        <span class="divider"></span><button id="undoBtn" title="元に戻す">↶<span>戻す</span></button><button id="redoBtn" title="やり直す">↷<span>進む</span></button>
+        <span class="divider"></span><button id="previewBtn">プレビュー</button>
+        <div class="mode-switch" role="group" aria-label="表示モード"><button data-mode="student" class="active">児童用</button><button data-mode="teacher">先生用</button></div>
+        <button id="printBtn" class="accent">印刷</button>
+      </nav>
+      <span id="saveStatus" class="save-status" aria-live="polite">保存済み</span>
+    </header>
+
+    <div class="mobile-tabs no-print" role="tablist">
+      <button data-panel="parts" class="active">パーツ</button><button data-panel="canvas">編集</button><button data-panel="settings">設定</button>
+    </div>
+
+    <main class="workspace">
+      <aside id="partsPanel" class="side-panel parts-panel no-print active">
+        <div class="panel-head"><div><span class="step">1</span><b>パーツを選ぶ</b></div><button id="paperSettingsBtn" class="link-btn">用紙設定</button></div>
+        <p class="panel-help">押すと用紙の最後に追加されます</p>
+        <div id="partsList" class="parts-list"></div>
+        <details class="part-sets" open><summary>便利なパーツセット</summary><button data-set="written">記述問題セット</button><button data-set="math">算数問題セット</button><button data-set="reflection">振り返りセット</button></details>
+      </aside>
+
+      <section id="canvasPanel" class="canvas-panel active">
+        <div class="canvas-top no-print">
+          <div><b id="documentName">無題のプリント</b><span id="pageCount">1ページ</span></div>
+          <div class="zoom-control"><button id="zoomOut" aria-label="縮小">−</button><span id="zoomLabel">75%</span><button id="zoomIn" aria-label="拡大">＋</button></div>
+        </div>
+        <div id="pages" class="pages" aria-label="プリント編集用紙"></div>
+      </section>
+
+      <aside id="settingsPanel" class="side-panel settings-panel no-print">
+        <div class="panel-head"><div><span class="step">2</span><b>内容を整える</b></div></div>
+        <div id="settingsContent"></div>
+      </aside>
+    </main>
+  </div>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card"><div class="modal-head"><div><p id="modalKicker"></p><h2 id="modalTitle"></h2></div><button id="modalClose" aria-label="閉じる">×</button></div><div id="modalBody"></div></div>
+  </div>
+
+  <div id="previewOverlay" class="preview-overlay hidden">
+    <div class="preview-bar no-print"><div><b>印刷プレビュー</b><span>編集用の枠やボタンは印刷されません</span></div><div><button id="closePreview">編集に戻る</button><button id="previewPrint" class="accent">印刷する</button></div></div>
+    <div id="previewPages" class="pages preview-pages"></div>
+  </div>
+
+  <template id="emptySettings"><div class="empty-settings"><span>↖</span><b>パーツを選んでください</b><p>用紙上のパーツを押すと、文章や大きさを変更できます。</p></div></template>
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

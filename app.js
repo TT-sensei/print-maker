@@ -1,0 +1,310 @@
+(() => {
+  'use strict';
+
+  const STORAGE = { draft:'printKobo.draft.v1', templates:'printKobo.templates.v1', documents:'printKobo.documents.v1' };
+  const SUBJECTS = {
+    japanese:{label:'国語',color:'#b84e4e'}, math:{label:'算数',color:'#3e6fa6'}, science:{label:'理科',color:'#47805c'},
+    social:{label:'社会',color:'#c77732'}, english:{label:'外国語',color:'#75599b'}, other:{label:'その他',color:'#315b52'}
+  };
+  const PARTS = [
+    ['heading','見出し','▰'],['text','説明','☰'],['goal','めあて','◎'],['question','問題','?'],['answerline','一行解答','＿'],
+    ['ruled','記述','≡'],['calc','計算','＋'],['grid','方眼','▦'],['choice','選択問題','☑'],['table','表','▤'],['image','画像','▧'],
+    ['navi','NAVI','☺'],['summary','まとめ','✓'],['reflection','振り返り','↗'],['score','得点欄','点']
+  ];
+  const NAVI_BASE = 'https://tt-sensei.github.io/navi-character-/assets/web/groups/learning/';
+  const NAVI = [
+    ['国語・話し合い','group-learning-japanese-discussion.webp'],['国語・読書','group-learning-japanese-reading.webp'],
+    ['算数・図を使う','group-learning-math-diagram.webp'],['算数・図形','group-learning-math-shapes.webp'],
+    ['相談する','group-learning-pair-consulting.webp'],['黒板で考える','group-learning-pair-blackboard.webp'],
+    ['長さを測る','group-learning-pair-measure-length.webp'],['観察する','group-learning-pair-observation.webp'],
+    ['いっしょに読む','group-learning-pair-reading.webp'],['理科・実験','group-learning-science-experiment.webp'],
+    ['理科・観察','group-learning-science-observation.webp'],['社会・地図','group-learning-social-map.webp']
+  ];
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const clone = obj => JSON.parse(JSON.stringify(obj));
+  const uid = () => 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const nl = value => esc(value).replace(/\n/g,'<br>');
+  const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
+  const write = (key, value) => localStorage.setItem(key, JSON.stringify(value));
+
+  let worksheet = null;
+  let selectedId = null;
+  let displayMode = 'student';
+  let zoom = .75;
+  let history = [];
+  let future = [];
+  let saveTimer = 0;
+  let toastTimer = 0;
+
+  function newWorksheet(subject='other', writingMode='horizontal') {
+    const now = new Date().toISOString();
+    return { id:uid(), name:'無題のプリント', title:'学習プリント', subtitle:'', subject, paperSize:'A4', orientation:'portrait', writingMode,
+      margin:'standard', fontSize:'standard', lineHeight:'standard', showGrade:true, showClass:true, showName:true, showDate:true,
+      grade:'6', className:'', date:'', createdAt:now, updatedAt:now, blocks:[] };
+  }
+
+  function makeBlock(type, overrides={}) {
+    const defaults = {
+      heading:{content:'見出し',width:100,alignment:'left',fontSize:15,bold:true,background:false},
+      text:{content:'ここに説明や指示を書きます。',width:100,alignment:'left',writingMode:'auto',fontSize:10.5,lineHeight:1.65,frame:false},
+      goal:{content:'今日の学習のめあてを書きます。',width:100,alignment:'left',writingMode:'auto'},
+      question:{content:'問題文を入力してください。',answer:'',width:100,numbered:true,writingMode:'auto'},
+      answerline:{content:'',width:100,height:10,writingMode:'horizontal'},
+      ruled:{content:'',width:100,height:35,lines:true,lineGap:8,writingMode:'horizontal'},
+      calc:{content:'',width:100,height:40,pattern:'blank',writingMode:'horizontal'},
+      grid:{content:'',width:100,height:45,writingMode:'horizontal'},
+      choice:{content:'問題文を入力してください。',answer:'',width:100,marker:'kana',choices:['選択肢1','選択肢2','選択肢3','選択肢4'],writingMode:'auto'},
+      table:{content:'',width:100,rows:3,cols:3,cells:Array(9).fill(''),writingMode:'horizontal'},
+      image:{content:'',width:100,height:45,imageUrl:'',alignment:'center',writingMode:'horizontal'},
+      navi:{content:'',width:100,height:40,imageUrl:NAVI_BASE+NAVI[0][1],alignment:'right',writingMode:'horizontal'},
+      summary:{content:'学習のまとめを書きます。',width:100,alignment:'left',writingMode:'auto'},
+      reflection:{content:'わかったこと',width:100,height:24,lines:true,writingMode:'auto'},
+      score:{content:'得点',width:33,total:100,writingMode:'horizontal'}
+    };
+    return { id:uid(), type, ...clone(defaults[type]), ...overrides };
+  }
+
+  const PRESETS = [
+    {id:'blank',icon:'□',name:'自由',desc:'空のA4から作る',subject:'other',build:w=>w},
+    {id:'math',icon:'＋',name:'算数',desc:'問題と計算スペース',subject:'math',build:w=>addPreset(w,[['goal',{}],['question',{content:'① 問題文を入力します。',numbered:false}],['calc',{}],['question',{content:'② 問題文を入力します。',numbered:false}],['calc',{}],['reflection',{content:'今日の学習を振り返ろう。'}]])},
+    {id:'japanese',icon:'あ',name:'国語',desc:'本文・問題・記述欄',subject:'japanese',build:w=>addPreset(w,[['text',{content:'本文や資料文を入力します。',frame:true}],['question',{}],['ruled',{height:40}],['question',{}],['ruled',{height:40}]])},
+    {id:'vertical',icon:'縦',name:'国語・縦書き',desc:'縦書きの国語教材',subject:'japanese',writingMode:'vertical',build:w=>addPreset(w,[['text',{content:'ここに縦書きの本文を入力します。',height:70}],['question',{}],['ruled',{height:45,writingMode:'horizontal'}]])},
+    {id:'kanji',icon:'漢',name:'漢字',desc:'方眼とミニテスト',subject:'japanese',build:w=>addPreset(w,[['heading',{content:'漢字練習'}],['grid',{height:65}],['heading',{content:'ミニテスト'}],['grid',{height:50}]])},
+    {id:'science',icon:'⚗',name:'理科',desc:'予想・結果・考察',subject:'science',build:w=>addPreset(w,[['goal',{}],['heading',{content:'予想'}],['ruled',{height:25}],['heading',{content:'実験・観察'}],['text',{content:'方法や注意点を書きます。',frame:true}],['heading',{content:'結果'}],['ruled',{height:30}],['summary',{content:'考察・まとめ'}],['ruled',{height:30}]])},
+    {id:'social',icon:'地',name:'社会',desc:'資料・問題・まとめ',subject:'social',build:w=>addPreset(w,[['heading',{content:'資料'}],['image',{}],['question',{}],['ruled',{height:35}],['summary',{}]])},
+    {id:'test',icon:'点',name:'ミニテスト',desc:'得点欄と問題',subject:'other',build:w=>addPreset(w,[['score',{}],['question',{}],['answerline',{}],['question',{}],['answerline',{}],['question',{}],['answerline',{}]])},
+    {id:'reflection',icon:'↗',name:'振り返り',desc:'できたことと次の目標',subject:'other',build:w=>addPreset(w,[['goal',{content:'今日のめあて'}],['reflection',{content:'できたこと',height:24}],['reflection',{content:'わかったこと',height:30}],['reflection',{content:'次にがんばること',height:24}]])}
+  ];
+  function addPreset(w, list){ w.blocks=list.map(([t,o])=>makeBlock(t,o)); return w; }
+
+  function init() {
+    renderParts();
+    const draft = read(STORAGE.draft,null);
+    $('#draftInfo').textContent = draft ? `${draft.name || draft.title}（${formatDate(draft.updatedAt)}）` : 'まだ自動保存はありません';
+    bindEvents();
+    if (location.hash === '#edit' && draft) openEditor(draft);
+  }
+
+  function bindEvents() {
+    document.addEventListener('click', handleClick);
+    $('#settingsContent').addEventListener('input', handleSettingsInput);
+    $('#settingsContent').addEventListener('change', handleSettingsChange);
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
+      if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); }
+      if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); openSaveDialog(); }
+    });
+    document.addEventListener('focusin', e => {
+      const cell=e.target.closest('[data-table-cell]');
+      if(cell && !cell.dataset.started && !$('#previewOverlay').contains(cell)){ commit();cell.dataset.started='1'; }
+    });
+    document.addEventListener('input', e => {
+      const cell=e.target.closest('[data-table-cell]'); if(!cell || $('#previewOverlay').contains(cell))return;
+      const b=worksheet.blocks.find(x=>x.id===cell.closest('.block')?.dataset.id); if(!b)return;
+      b.cells[Number(cell.dataset.tableCell)]=cell.innerText; worksheet.updatedAt=new Date().toISOString();scheduleSave();
+    });
+    window.addEventListener('afterprint',()=>document.body.classList.remove('print-landscape'));
+  }
+
+  function handleClick(e) {
+    const start=e.target.closest('[data-start]'); if(start){ const a=start.dataset.start; if(a==='new') openPresetDialog(); if(a==='continue'){const d=read(STORAGE.draft,null);d?openEditor(d):openPresetDialog();} if(a==='templates') openLibraryDialog(true); return; }
+    const preset=e.target.closest('[data-preset]'); if(preset){ createFromPreset(preset.dataset.preset); return; }
+    const part=e.target.closest('[data-add-part]'); if(part){ addBlock(part.dataset.addPart); return; }
+    const set=e.target.closest('[data-set]'); if(set){ addSet(set.dataset.set); return; }
+    const block=e.target.closest('.block[data-id]');
+    const action=e.target.closest('[data-action]');
+    if(action && block){ e.stopPropagation(); blockAction(block.dataset.id,action.dataset.action); return; }
+    if(block && !$('#previewOverlay').contains(block)){ if(selectedId===block.dataset.id)return; selectedId=block.dataset.id; renderWorkspace(); switchMobilePanel('settings'); return; }
+    const prop=e.target.closest('[data-setprop]'); if(prop){ setBlockProp(prop.dataset.setprop,parseValue(prop.dataset.value)); return; }
+    const nav=e.target.closest('[data-navi]'); if(nav){ setBlockProp('imageUrl',nav.dataset.navi); return; }
+    const h=e.target.closest('[data-height]'); if(h){ const b=getSelected(); if(b){ commit(); b.height=Math.max(6,(b.height||30)+Number(h.dataset.height)); changed(); } return; }
+    const mode=e.target.closest('[data-mode]'); if(mode){ displayMode=mode.dataset.mode; $$('.mode-switch button').forEach(x=>x.classList.toggle('active',x===mode)); renderWorkspace(); return; }
+    const tab=e.target.closest('[data-panel]'); if(tab){ switchMobilePanel(tab.dataset.panel); return; }
+    const cell=e.target.closest('[data-use-doc]'); if(cell){ useSaved(cell.dataset.useDoc,cell.dataset.kind); return; }
+    const del=e.target.closest('[data-delete-saved]'); if(del){ deleteSaved(del.dataset.deleteSaved,del.dataset.kind); return; }
+    if(e.target.id==='modalClose'||e.target=== $('#modal')) closeModal();
+    if(e.target.id==='homeBtn'){ showStart(); }
+    if(e.target.id==='newBtn'){ openPresetDialog(); }
+    if(e.target.id==='saveBtn'){ openSaveDialog(); }
+    if(e.target.id==='templatesBtn'){ openLibraryDialog(false); }
+    if(e.target.id==='undoBtn') undo(); if(e.target.id==='redoBtn') redo();
+    if(e.target.id==='paperSettingsBtn') openPaperSettings();
+    if(e.target.id==='previewBtn') openPreview(); if(e.target.id==='closePreview') closePreview();
+    if(e.target.id==='printBtn'||e.target.id==='previewPrint') printWorksheet();
+    if(e.target.id==='zoomOut') setZoom(zoom-.1); if(e.target.id==='zoomIn') setZoom(zoom+.1);
+    if(e.target.id==='saveDocumentAction') saveNamed('document'); if(e.target.id==='saveTemplateAction') saveNamed('template');
+    if(e.target.id==='applyPaperSettings') applyPaperSettings();
+  }
+
+  function renderParts(){ $('#partsList').innerHTML=PARTS.map(([id,label,icon])=>`<button class="part-button" data-add-part="${id}"><span>${icon}</span>${label}</button>`).join(''); }
+
+  function createFromPreset(id){
+    const p=PRESETS.find(x=>x.id===id); if(!p)return;
+    let w=newWorksheet(p.subject,p.writingMode||'horizontal'); w.title=p.name==='自由'?'学習プリント':`${p.name}プリント`; w.name=w.title; w=p.build(w);
+    closeModal(); openEditor(w); toast(`${p.name}のひな形を開きました`);
+  }
+
+  function openEditor(data){ worksheet=clone(data); selectedId=null; history=[];future=[]; $('#startScreen').classList.add('hidden');$('#editor').classList.remove('hidden');location.hash='edit';renderWorkspace();scheduleSave(); }
+  function showStart(){ $('#editor').classList.add('hidden');$('#startScreen').classList.remove('hidden');location.hash='';const d=read(STORAGE.draft,null);$('#draftInfo').textContent=d?`${d.name||d.title}（${formatDate(d.updatedAt)}）`:'まだ自動保存はありません'; }
+
+  function renderWorkspace(){
+    if(!worksheet)return;
+    const sub=SUBJECTS[worksheet.subject]||SUBJECTS.other;
+    document.documentElement.style.setProperty('--subject',sub.color);
+    document.documentElement.style.setProperty('--page-w',worksheet.orientation==='landscape'?'297mm':'210mm');
+    document.documentElement.style.setProperty('--page-h',worksheet.orientation==='landscape'?'210mm':'297mm');
+    document.documentElement.style.setProperty('--page-pad',({narrow:9,standard:14,wide:20}[worksheet.margin]||14)+'mm');
+    document.documentElement.style.setProperty('--zoom',zoom);
+    document.documentElement.style.setProperty('--base-font',({small:9.5,standard:10.5,large:12}[worksheet.fontSize]||10.5)+'pt');
+    document.documentElement.style.setProperty('--base-leading',({narrow:1.35,standard:1.55,wide:1.8}[worksheet.lineHeight]||1.55));
+    $('#documentName').textContent=worksheet.name||worksheet.title||'無題のプリント';
+    renderPagesInto($('#pages'),true);
+    renderSettings(); updateUndoButtons();
+  }
+
+  function renderPagesInto(container, editing){
+    const pages=paginate();
+    container.classList.toggle('editing',editing);
+    container.innerHTML=pages.map((rows,i)=>`<div class="page-wrap"><div class="page-label">${i+1} / ${pages.length}ページ</div><article class="page ${worksheet.orientation} ${worksheet.writingMode==='vertical'?'vertical-root':''}"><div class="page-content">${i===0?renderHeader():''}${rows.map(row=>`<div class="page-row">${row.map(renderBlock).join('')}</div>`).join('')}</div></article></div>`).join('');
+    if(!editing)container.querySelectorAll('[contenteditable]').forEach(x=>x.contentEditable='false');
+    $('#pageCount').textContent=`${pages.length}ページ`;
+  }
+
+  function renderHeader(){
+    const info=[];
+    if(worksheet.showDate) info.push(`日付 <span class="fill">${esc(worksheet.date)}</span>`);
+    if(worksheet.showGrade) info.push(`<span class="fill">${esc(worksheet.grade)}</span>年`);
+    if(worksheet.showClass) info.push(`<span class="fill">${esc(worksheet.className)}</span>組`);
+    if(worksheet.showName) info.push(`名前 <span class="fill name-fill"></span>`);
+    return `<header class="worksheet-header"><div class="worksheet-title-row"><div><div class="worksheet-title">${esc(worksheet.title)}</div>${worksheet.subtitle?`<div class="worksheet-subtitle">${esc(worksheet.subtitle)}</div>`:''}</div></div>${info.length?`<div class="student-info">${info.join('　')}</div>`:''}</header>`;
+  }
+
+  function paginate(){
+    const pageH=worksheet.orientation==='landscape'?210:297, pad={narrow:9,standard:14,wide:20}[worksheet.margin]||14;
+    const firstCapacity=pageH-pad*2-30, nextCapacity=pageH-pad*2;
+    const rows=[]; let row=[],used=0;
+    worksheet.blocks.forEach((b,i)=>{ const w=Number(b.width)||100; if(row.length && used+w>101){rows.push(row);row=[];used=0;} row.push(b);used+=w;if(used>=99){rows.push(row);row=[];used=0;} if(i===worksheet.blocks.length-1&&row.length)rows.push(row); });
+    const pages=[[]]; let pageIndex=0, usedH=0;
+    rows.forEach(row=>{const h=Math.max(...row.map(estimateHeight))+3;const cap=pageIndex===0?firstCapacity:nextCapacity;if(usedH+h>cap&&pages[pageIndex].length){pages.push([]);pageIndex++;usedH=0;}pages[pageIndex].push(row);usedH+=h;});
+    return pages;
+  }
+
+  function estimateHeight(b){
+    const chars=String(b.content||'').length, width=(b.width||100)/100, writing=resolvedWriting(b);
+    if(['ruled','calc','grid','image','navi','reflection','answerline'].includes(b.type)) return Number(b.height)||30;
+    if(b.type==='table')return (b.rows||3)*10+4; if(b.type==='choice')return 22+Math.ceil((b.choices||[]).length/2)*8;
+    if(b.type==='heading')return 12; if(b.type==='goal'||b.type==='summary')return 18; if(b.type==='score')return 14;
+    if(writing==='vertical')return Math.min(90,Math.max(28,Math.ceil(chars/15)*9));
+    return Math.min(80,Math.max(14,Math.ceil(chars/(55*width))*7+7));
+  }
+
+  function resolvedWriting(b){return b.writingMode==='horizontal'?'horizontal':b.writingMode==='vertical'?'vertical':worksheet.writingMode;}
+  function blockClasses(b){return `block block-${b.type} ${selectedId===b.id?'selected':''} ${resolvedWriting(b)==='vertical'?'writing-vertical vertical-auto':'writing-horizontal'} ${b.background?'has-bg':''} ${b.frame?'has-frame':''}`;}
+  function actionBar(){return `<div class="block-actions"><button data-action="up" title="上へ">↑</button><button data-action="down" title="下へ">↓</button><button data-action="duplicate" title="複製">⧉</button><button data-action="delete" title="削除">×</button></div>`;}
+  function renderBlock(b,index){
+    const style=`width:calc(${Number(b.width)||100}% - 1.5mm);--block-h:${Number(b.height)||30}mm;--line-gap:${Number(b.lineGap)||8}mm;--align:${b.alignment||'left'};text-align:${b.alignment||'left'}`;
+    let body=''; const qNum=b.numbered?`<span class="q-number">${questionNumber(b.id)}.</span>`:'';
+    if(b.type==='heading') body=`<div class="content" style="font-size:${b.fontSize||15}pt;font-weight:${b.bold===false?400:800}">${nl(b.content)}</div>`;
+    if(b.type==='text') body=`<div class="content" style="font-size:${b.fontSize||10.5}pt;line-height:${b.lineHeight||1.65}">${nl(b.content)}</div>`;
+    if(b.type==='goal'||b.type==='summary') body=`<div class="goal-box"><span class="goal-label">${b.type==='goal'?'めあて':'まとめ'}</span><div class="content">${nl(b.content)}</div></div>`;
+    if(b.type==='question') body=`<div class="block-question">${qNum}<div><div class="content">${nl(b.content)}</div>${displayMode==='teacher'&&b.answer?`<div class="answer-display">答　${nl(b.answer)}</div>`:''}</div></div>`;
+    if(b.type==='answerline') body='<div class="answer-line"></div>';
+    if(b.type==='ruled') body=`<div class="ruled-area ${b.lines===false?'no-lines':''}"></div>`;
+    if(b.type==='calc') body=`<div class="calc-area ${b.pattern||'blank'}"></div>`;
+    if(b.type==='grid') body='<div class="grid-area"></div>';
+    if(b.type==='choice'){const marks=b.marker==='number'?['①','②','③','④','⑤','⑥']:['ア','イ','ウ','エ','オ','カ'];body=`<div class="block-question">${qNum}<div style="flex:1"><div class="content">${nl(b.content)}</div><div class="choices">${(b.choices||[]).map((x,i)=>`<div><span class="choice-mark">${marks[i]}</span>${nl(x)}</div>`).join('')}</div>${displayMode==='teacher'&&b.answer?`<div class="answer-display">答　${nl(b.answer)}</div>`:''}</div></div>`;}
+    if(b.type==='table'){body=`<table class="worksheet-table"><tbody>${Array.from({length:b.rows||2},(_,r)=>`<tr>${Array.from({length:b.cols||2},(_,c)=>{const i=r*(b.cols||2)+c;return `<td contenteditable="true" data-table-cell="${i}">${nl((b.cells||[])[i]||'')}</td>`}).join('')}</tr>`).join('')}</tbody></table>`;}
+    if(b.type==='image'||b.type==='navi') body=b.imageUrl?`<img src="${esc(b.imageUrl)}" alt="${b.type==='navi'?'学習イラスト':'挿入画像'}">`:'<div class="placeholder-image">画像を選んでください</div>';
+    if(b.type==='reflection') body=`<div class="reflection-label">${nl(b.content)}</div><div class="ruled-area"></div>`;
+    if(b.type==='score') body=`<div class="score-line">${esc(b.content||'得点')}　　／ ${Number(b.total)||100} 点</div>`;
+    return `<section class="${blockClasses(b)}" style="${style}" data-id="${b.id}">${actionBar()}${body}</section>`;
+  }
+
+  function questionNumber(id){return worksheet.blocks.filter(b=>b.type==='question'||b.type==='choice').findIndex(b=>b.id===id)+1;}
+  function getSelected(){return worksheet?.blocks.find(b=>b.id===selectedId);}
+
+  function addBlock(type){ if(!worksheet)return;commit();const b=makeBlock(type);worksheet.blocks.push(b);selectedId=b.id;changed();setTimeout(()=>document.querySelector(`[data-id="${b.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}),30); }
+  function addSet(set){commit();const lists={written:[['question',{}],['ruled',{height:40}]],math:[['question',{}],['calc',{height:38}],['answerline',{height:9}]],reflection:[['reflection',{content:'わかったこと',height:30}],['reflection',{content:'次にがんばること',height:24}]]};const made=(lists[set]||[]).map(([t,o])=>makeBlock(t,o));worksheet.blocks.push(...made);selectedId=made[0]?.id;changed();}
+  function blockAction(id,action){const i=worksheet.blocks.findIndex(b=>b.id===id);if(i<0)return;commit();if(action==='up'&&i>0)[worksheet.blocks[i-1],worksheet.blocks[i]]=[worksheet.blocks[i],worksheet.blocks[i-1]];if(action==='down'&&i<worksheet.blocks.length-1)[worksheet.blocks[i+1],worksheet.blocks[i]]=[worksheet.blocks[i],worksheet.blocks[i+1]];if(action==='duplicate'){const c=clone(worksheet.blocks[i]);c.id=uid();worksheet.blocks.splice(i+1,0,c);selectedId=c.id;}if(action==='delete'){worksheet.blocks.splice(i,1);selectedId=worksheet.blocks[Math.min(i,worksheet.blocks.length-1)]?.id||null;}changed();}
+
+  function renderSettings(){
+    const root=$('#settingsContent'),b=getSelected(); if(!b){root.innerHTML=$('#emptySettings').innerHTML;return;}
+    const label=PARTS.find(x=>x[0]===b.type)?.[1]||b.type;
+    let html=`<div class="settings-section"><h3>${label}</h3>`;
+    if(['heading','text','goal','question','choice','summary','reflection','score'].includes(b.type)) html+=field('文章','content',b.content,'textarea');
+    if(['question','choice'].includes(b.type)) html+=field('解答（先生用に表示）','answer',b.answer||'','textarea');
+    if(b.type==='heading') html+=field('文字サイズ','fontSize',b.fontSize||15,'number')+segment('太字','bold',b.bold!==false,[['true','あり'],['false','なし']])+segment('背景','background',!!b.background,[['true','あり'],['false','なし']]);
+    if(b.type==='text') html+=field('文字サイズ（pt）','fontSize',b.fontSize||10.5,'number')+field('行間','lineHeight',b.lineHeight||1.65,'number')+segment('枠','frame',!!b.frame,[['true','あり'],['false','なし']]);
+    if(['question','choice'].includes(b.type)) html+=segment('問題番号','numbered',b.numbered!==false,[['true','あり'],['false','なし']]);
+    if(b.type==='choice') html+=choiceSettings(b);
+    if(['ruled','calc','grid','image','navi','reflection','answerline'].includes(b.type)) html+=heightControl(b);
+    if(b.type==='ruled'||b.type==='reflection') html+=segment('罫線','lines',b.lines!==false,[['true','あり'],['false','なし']])+field('行の間隔（mm）','lineGap',b.lineGap||8,'number');
+    if(b.type==='calc') html+=segment('計算欄','pattern',b.pattern||'blank',[['blank','白紙'],['lines','横罫'],['grid','方眼']]);
+    if(b.type==='image') html+=`<label class="field"><span>端末から画像を選ぶ</span><input id="imageFile" type="file" accept="image/*"></label>`;
+    if(b.type==='navi') html+=naviSettings(b);
+    if(b.type==='table') html+=tableSettings(b);
+    if(b.type==='score') html+=field('満点','total',b.total||100,'number');
+    html+='</div><div class="settings-section">'+segment('横幅','width',Number(b.width)||100,[['100','100%'],['66','66%'],['50','50%'],['33','33%']]);
+    if(!['table','calc','grid','answerline'].includes(b.type))html+=segment('配置','alignment',b.alignment||'left',[['left','左'],['center','中央'],['right','右']]);
+    html+=segment('文字方向','writingMode',b.writingMode||'auto',[['auto','自動'],['horizontal','横'],['vertical','縦']]);
+    html+=`</div><button class="danger-btn">このパーツを削除</button>`;
+    root.innerHTML=html;
+    const danger=root.querySelector('.danger-btn');danger.onclick=()=>blockAction(b.id,'delete');
+  }
+
+  function field(label,prop,value,type='text'){return `<label class="field"><span>${label}</span>${type==='textarea'?`<textarea data-prop="${prop}">${esc(value)}</textarea>`:`<input data-prop="${prop}" type="${type}" value="${esc(value)}" ${type==='number'?'step="0.5"':''}>`}</label>`;}
+  function segment(label,prop,current,options){return `<div class="field"><span>${label}</span><div class="segmented">${options.map(([v,l])=>`<button data-setprop="${prop}" data-value="${v}" class="${String(current)===String(parseValue(v))?'active':''}">${l}</button>`).join('')}</div></div>`;}
+  function heightControl(b){return `<div class="field"><span>高さ（${b.height||30}mm）</span><div class="segmented"><button data-height="-5">−</button><button data-setprop="height" data-value="20">小</button><button data-setprop="height" data-value="35">中</button><button data-setprop="height" data-value="55">大</button><button data-height="5">＋</button></div></div>`;}
+  function choiceSettings(b){return `<div class="field"><span>選択肢（2〜6個）</span>${(b.choices||[]).map((x,i)=>`<input data-choice="${i}" value="${esc(x)}" style="margin-bottom:4px">`).join('')}<div class="segmented"><button data-choice-action="remove">− 1個</button><button data-choice-action="add">＋ 1個</button></div></div>${segment('記号','marker',b.marker||'kana',[['kana','アイウ'],['number','①②③']])}`;}
+  function tableSettings(b){return `<div class="inline-fields">${field('行','rows',b.rows||3,'number')}${field('列','cols',b.cols||3,'number')}</div><div class="field"><span>セルの内容</span><div class="table-editor" style="grid-template-columns:repeat(${b.cols||3},1fr)">${(b.cells||[]).map((x,i)=>`<input data-cell="${i}" value="${esc(x)}" aria-label="セル${i+1}">`).join('')}</div></div>`;}
+  function naviSettings(b){return `<div class="field"><span>NAVIイラスト</span><div class="navi-grid">${NAVI.map(([label,file])=>{const url=NAVI_BASE+file;return `<button class="navi-choice ${b.imageUrl===url?'active':''}" data-navi="${url}"><img src="${url}" alt=""><small>${label}</small></button>`}).join('')}</div></div>`;}
+
+  function handleSettingsInput(e){
+    const b=getSelected();if(!b)return;
+    if(e.target.dataset.prop){ if(!e.target.dataset.started){commit();e.target.dataset.started='1';} b[e.target.dataset.prop]=parseValue(e.target.value); changed(false); }
+    if(e.target.dataset.choice){if(!e.target.dataset.started){commit();e.target.dataset.started='1';}b.choices[Number(e.target.dataset.choice)]=e.target.value;changed(false);}
+    if(e.target.dataset.cell){if(!e.target.dataset.started){commit();e.target.dataset.started='1';}b.cells[Number(e.target.dataset.cell)]=e.target.value;changed(false);}
+  }
+  function handleSettingsChange(e){
+    const b=getSelected();if(!b)return;
+    if(e.target.id==='imageFile'&&e.target.files[0]){const file=e.target.files[0];if(file.size>4*1024*1024){toast('画像は4MB以下をおすすめします');return;}const reader=new FileReader();reader.onload=()=>{commit();b.imageUrl=reader.result;changed();};reader.readAsDataURL(file);}
+    if(e.target.dataset.prop==='rows'||e.target.dataset.prop==='cols'){resizeTable(b);changed();}
+  }
+  $('#settingsContent').addEventListener('click',e=>{const b=getSelected();if(!b)return;const a=e.target.dataset.choiceAction;if(a){commit();if(a==='add'&&b.choices.length<6)b.choices.push(`選択肢${b.choices.length+1}`);if(a==='remove'&&b.choices.length>2)b.choices.pop();changed();}});
+  function resizeTable(b){b.rows=Math.max(1,Math.min(10,Number(b.rows)||1));b.cols=Math.max(1,Math.min(8,Number(b.cols)||1));const old=b.cells||[];b.cells=Array.from({length:b.rows*b.cols},(_,i)=>old[i]||'');}
+  function setBlockProp(prop,value){const b=getSelected();if(!b)return;commit();b[prop]=value;if((prop==='rows'||prop==='cols')&&b.type==='table')resizeTable(b);changed();}
+  function parseValue(v){if(v==='true')return true;if(v==='false')return false;if(v!==''&&!Number.isNaN(Number(v)))return Number(v);return v;}
+
+  function commit(){ if(!worksheet)return;history.push(JSON.stringify(worksheet));if(history.length>30)history.shift();future=[]; }
+  function undo(){if(!history.length)return;future.push(JSON.stringify(worksheet));worksheet=JSON.parse(history.pop());selectedId=worksheet.blocks.some(b=>b.id===selectedId)?selectedId:null;changed();}
+  function redo(){if(!future.length)return;history.push(JSON.stringify(worksheet));worksheet=JSON.parse(future.pop());selectedId=worksheet.blocks.some(b=>b.id===selectedId)?selectedId:null;changed();}
+  function updateUndoButtons(){$('#undoBtn').disabled=!history.length;$('#redoBtn').disabled=!future.length;}
+  function changed(full=true){worksheet.updatedAt=new Date().toISOString();scheduleSave();if(full)renderWorkspace();else{renderPagesInto($('#pages'),true);$('#saveStatus').textContent='保存中…';}}
+  function scheduleSave(){clearTimeout(saveTimer);$('#saveStatus').textContent='保存中…';saveTimer=setTimeout(()=>{try{write(STORAGE.draft,worksheet);$('#saveStatus').textContent='保存しました';}catch{toast('保存容量がいっぱいです。大きな画像を減らしてください');$('#saveStatus').textContent='保存できません';}},450);}
+
+  function openPresetDialog(){openModal('新しいプリント','ひな形を選ぶ',`<div class="template-grid">${PRESETS.map(p=>`<button class="template-card" data-preset="${p.id}"><span>${p.icon}</span><b>${p.name}</b><small>${p.desc}</small></button>`).join('')}</div>`);}
+  function openSaveDialog(){openModal('保存','あとで使えるように残す',`<label class="field"><span>プリント名</span><input id="saveName" value="${esc(worksheet.name||worksheet.title)}"></label><p class="panel-help">「プリントとして保存」は内容も残します。「テンプレート」はコピーを作るためのひな形として保存します。</p><div class="form-actions"><button id="saveTemplateAction">テンプレートとして保存</button><button id="saveDocumentAction" class="accent">プリントとして保存</button></div>`);setTimeout(()=>$('#saveName')?.select(),0);}
+  function saveNamed(kind){const name=$('#saveName').value.trim()||worksheet.title||'無題のプリント';worksheet.name=name;worksheet.updatedAt=new Date().toISOString();const key=kind==='template'?STORAGE.templates:STORAGE.documents;const items=read(key,[]);const saved=clone(worksheet);saved.id=uid();saved.name=name;items.unshift(saved);try{write(key,items.slice(0,40));write(STORAGE.draft,worksheet);closeModal();renderWorkspace();toast(kind==='template'?'テンプレートに保存しました':'プリントを保存しました');}catch{toast('保存容量がいっぱいです');}}
+  function openLibraryDialog(fromStart){const docs=read(STORAGE.documents,[]),temps=read(STORAGE.templates,[]);const rows=(items,kind)=>items.length?items.map(x=>`<div class="template-row"><div><b>${esc(x.name||x.title)}</b><small>${SUBJECTS[x.subject]?.label||'その他'}・${x.orientation==='landscape'?'A4横':'A4縦'}・${formatDate(x.updatedAt)}</small></div><button class="use" data-use-doc="${x.id}" data-kind="${kind}">コピーして作る</button><button data-delete-saved="${x.id}" data-kind="${kind}">削除</button></div>`).join(''):'<p class="panel-help">まだ保存されていません。</p>';openModal('マイテンプレート','保存した形から作る',`<h3>マイテンプレート</h3><div class="template-list">${rows(temps,'template')}</div><h3 style="margin-top:24px">保存したプリント</h3><div class="template-list">${rows(docs,'document')}</div>`);}
+  function useSaved(id,kind){const items=read(kind==='template'?STORAGE.templates:STORAGE.documents,[]),src=items.find(x=>x.id===id);if(!src)return;const w=clone(src);w.id=uid();w.name=`${src.name} のコピー`;w.createdAt=w.updatedAt=new Date().toISOString();closeModal();openEditor(w);toast('コピーを作りました');}
+  function deleteSaved(id,kind){const key=kind==='template'?STORAGE.templates:STORAGE.documents;write(key,read(key,[]).filter(x=>x.id!==id));openLibraryDialog(false);}
+
+  function openPaperSettings(){openModal('用紙と基本情報','プリント全体の設定',`<div class="inline-fields">${selectField('教科','paperSubject',worksheet.subject,Object.entries(SUBJECTS).map(([v,x])=>[v,x.label]))}${selectField('用紙の向き','paperOrientation',worksheet.orientation,[['portrait','A4縦'],['landscape','A4横']])}${selectField('文字方向','paperWriting',worksheet.writingMode,[['horizontal','横書き'],['vertical','縦書き']])}${selectField('余白','paperMargin',worksheet.margin,[['narrow','狭い'],['standard','標準'],['wide','広い']])}${selectField('基本文字','paperFont',worksheet.fontSize,[['small','小'],['standard','標準'],['large','大']])}${selectField('行間','paperLine',worksheet.lineHeight,[['narrow','狭い'],['standard','標準'],['wide','広い']])}</div><hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><div class="inline-fields">${plainField('タイトル','paperTitle',worksheet.title)}${plainField('サブタイトル','paperSubtitle',worksheet.subtitle)}${plainField('学年','paperGrade',worksheet.grade)}${plainField('組','paperClass',worksheet.className)}${plainField('日付','paperDate',worksheet.date,'date')}</div><div class="field"><span>表示する欄</span><div class="segmented checks"><label><input id="showGrade" type="checkbox" ${worksheet.showGrade?'checked':''}> 学年</label><label><input id="showClass" type="checkbox" ${worksheet.showClass?'checked':''}> 組</label><label><input id="showName" type="checkbox" ${worksheet.showName?'checked':''}> 名前</label><label><input id="showDate" type="checkbox" ${worksheet.showDate?'checked':''}> 日付</label></div></div><div class="form-actions"><button id="applyPaperSettings" class="accent">設定を反映</button></div>`);}
+  function selectField(label,id,current,options){return `<label class="field"><span>${label}</span><select id="${id}">${options.map(([v,l])=>`<option value="${v}" ${v===current?'selected':''}>${l}</option>`).join('')}</select></label>`;}
+  function plainField(label,id,current,type='text'){return `<label class="field"><span>${label}</span><input id="${id}" type="${type}" value="${esc(current||'')}"></label>`;}
+  function applyPaperSettings(){commit();Object.assign(worksheet,{subject:$('#paperSubject').value,orientation:$('#paperOrientation').value,writingMode:$('#paperWriting').value,margin:$('#paperMargin').value,fontSize:$('#paperFont').value,lineHeight:$('#paperLine').value,title:$('#paperTitle').value,subtitle:$('#paperSubtitle').value,grade:$('#paperGrade').value,className:$('#paperClass').value,date:$('#paperDate').value,showGrade:$('#showGrade').checked,showClass:$('#showClass').checked,showName:$('#showName').checked,showDate:$('#showDate').checked});if(!worksheet.name||worksheet.name==='無題のプリント')worksheet.name=worksheet.title;closeModal();changed();}
+
+  function openPreview(){renderPagesInto($('#previewPages'),false);$('#previewOverlay').classList.remove('hidden');}
+  function closePreview(){$('#previewOverlay').classList.add('hidden');}
+  function printWorksheet(){document.body.classList.toggle('print-landscape',worksheet.orientation==='landscape');setTimeout(()=>window.print(),50);}
+  function setZoom(v){zoom=Math.max(.4,Math.min(1.1,Math.round(v*10)/10));$('#zoomLabel').textContent=Math.round(zoom*100)+'%';document.documentElement.style.setProperty('--zoom',zoom);}
+  function switchMobilePanel(name){const map={parts:'#partsPanel',canvas:'#canvasPanel',settings:'#settingsPanel'};$$('.mobile-tabs button').forEach(x=>x.classList.toggle('active',x.dataset.panel===name));$$('.workspace> *').forEach(x=>x.classList.remove('active'));$(map[name])?.classList.add('active');}
+  function openModal(title,kicker,body){$('#modalTitle').textContent=title;$('#modalKicker').textContent=kicker;$('#modalBody').innerHTML=body;$('#modal').classList.remove('hidden');}
+  function closeModal(){$('#modal').classList.add('hidden');}
+  function toast(msg){clearTimeout(toastTimer);$('#toast').textContent=msg;$('#toast').classList.add('show');toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),1800);}
+  function formatDate(s){if(!s)return'';const d=new Date(s);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;}
+
+  init();
+})();
