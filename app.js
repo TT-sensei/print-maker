@@ -8,7 +8,7 @@
   };
   const PARTS = [
     ['heading','見出し','▰'],['text','説明','☰'],['goal','めあて','◎'],['question','問題','?'],['answerline','一行解答','＿'],
-    ['ruled','記述','≡'],['calc','計算','＋'],['grid','方眼','▦'],['choice','選択問題','☑'],['table','表','▤'],['image','画像','▧'],
+    ['ruled','記述','≡'],['calc','計算','＋'],['grid','方眼','▦'],['kanji','漢字練習マス','あ'],['choice','選択問題','☑'],['table','表','▤'],['image','画像','▧'],
     ['navi','NAVI','☺'],['summary','まとめ','✓'],['reflection','ふりかえり','↗'],['score','得点欄','点']
   ];
   const NAVI_BASE = 'https://tt-sensei.github.io/navi-character-/assets/web/groups/learning/';
@@ -55,6 +55,7 @@
       ruled:{content:'',width:100,height:35,lines:true,lineGap:8,writingMode:'horizontal'},
       calc:{content:'',width:100,height:40,pattern:'blank',writingMode:'horizontal'},
       grid:{content:'',width:100,height:45,writingMode:'horizontal'},
+      kanji:{content:'',sample:'',width:100,rows:2,cols:8,cellSize:'medium',writingMode:'horizontal'},
       choice:{content:'問題文を入力してください。',answer:'',width:100,marker:'kana',choices:['選択肢1','選択肢2','選択肢3','選択肢4'],writingMode:'auto'},
       table:{content:'',width:100,rows:3,cols:3,cells:Array(9).fill(''),writingMode:'horizontal'},
       image:{content:'',width:100,height:45,imageUrl:'',alignment:'center',writingMode:'horizontal'},
@@ -71,7 +72,7 @@
     {id:'math',icon:'＋',name:'算数',desc:'問題と計算スペース',subject:'math',build:w=>addPreset(w,[['goal',{}],['question',{content:'① 問題文を入力します。',numbered:false}],['calc',{}],['question',{content:'② 問題文を入力します。',numbered:false}],['calc',{}],['reflection',{content:'今日の学習を振り返ろう。'}]])},
     {id:'japanese',icon:'あ',name:'国語',desc:'本文・問題・記述欄',subject:'japanese',build:w=>addPreset(w,[['text',{content:'本文や資料文を入力します。',frame:true}],['question',{}],['ruled',{height:40}],['question',{}],['ruled',{height:40}]])},
     {id:'vertical',icon:'縦',name:'国語・縦書き',desc:'縦書きの国語教材',subject:'japanese',writingMode:'vertical',build:w=>addPreset(w,[['text',{content:'ここに縦書きの本文を入力します。',height:70}],['question',{}],['ruled',{height:45,writingMode:'horizontal'}]])},
-    {id:'kanji',icon:'漢',name:'漢字',desc:'方眼とミニテスト',subject:'japanese',build:w=>addPreset(w,[['heading',{content:'漢字練習'}],['grid',{height:65}],['heading',{content:'ミニテスト'}],['grid',{height:50}]])},
+    {id:'kanji',icon:'漢',name:'漢字',desc:'漢字マスとミニテスト',subject:'japanese',build:w=>addPreset(w,[['heading',{content:'漢字練習'}],['kanji',{rows:2,cols:8,cellSize:'medium'}],['heading',{content:'ミニテスト'}],['kanji',{rows:1,cols:8,cellSize:'medium'}]])},
     {id:'science',icon:'⚗',name:'理科',desc:'予想・結果・考察',subject:'science',build:w=>addPreset(w,[['goal',{}],['heading',{content:'予想'}],['ruled',{height:25}],['heading',{content:'実験・観察'}],['text',{content:'方法や注意点を書きます。',frame:true}],['heading',{content:'結果'}],['ruled',{height:30}],['summary',{content:'考察・まとめ'}],['ruled',{height:30}]])},
     {id:'social',icon:'地',name:'社会',desc:'資料・問題・まとめ',subject:'social',build:w=>addPreset(w,[['heading',{content:'資料'}],['image',{}],['question',{}],['ruled',{height:35}],['summary',{}]])},
     {id:'test',icon:'点',name:'ミニテスト',desc:'得点欄と問題',subject:'other',build:w=>addPreset(w,[['score',{}],['question',{}],['answerline',{}],['question',{}],['answerline',{}],['question',{}],['answerline',{}]])},
@@ -194,7 +195,7 @@
   function estimateHeight(b){
     const chars=String(b.content||'').length, width=(b.width||100)/100, writing=resolvedWriting(b);
     if(['ruled','calc','grid','image','navi','reflection','answerline'].includes(b.type)) return Number(b.height)||30;
-    if(b.type==='table')return (b.rows||3)*10+4; if(b.type==='choice')return 22+Math.ceil((b.choices||[]).length/2)*8;
+    if(b.type==='table')return (b.rows||3)*10+4; if(b.type==='kanji'){const size={small:10,medium:14,large:18}[b.cellSize]||14;return (b.rows||2)*size+((b.rows||2)-1)*1.2+3;} if(b.type==='choice')return 22+Math.ceil((b.choices||[]).length/2)*8;
     if(b.type==='heading')return 12; if(b.type==='goal'||b.type==='summary')return 18; if(b.type==='score')return 14;
     if(writing==='vertical')return Math.min(90,Math.max(28,Math.ceil(chars/15)*9));
     return Math.min(80,Math.max(14,Math.ceil(chars/(55*width))*7+7));
@@ -214,6 +215,7 @@
     if(b.type==='ruled') body=`<div class="ruled-area ${b.lines===false?'no-lines':''}"></div>`;
     if(b.type==='calc') body=`<div class="calc-area ${b.pattern||'blank'}"></div>`;
     if(b.type==='grid') body='<div class="grid-area"></div>';
+    if(b.type==='kanji'){const size={small:10,medium:14,large:18}[b.cellSize]||14;const total=Math.max(1,Math.min(80,(b.rows||2)*(b.cols||8)));body=`<div class="kanji-practice-grid" style="--kanji-cols:${Math.max(1,Math.min(16,b.cols||8))};--kanji-size:${size}mm">${Array.from({length:total},(_,i)=>`<span class="kanji-cell ${i===0&&b.sample?'sample':''}">${i===0&&b.sample?esc(b.sample):''}</span>`).join('')}</div>`;}
     if(b.type==='choice'){const marks=b.marker==='number'?['①','②','③','④','⑤','⑥']:['ア','イ','ウ','エ','オ','カ'];body=`<div class="block-question">${qNum}<div style="flex:1"><div class="content">${nl(b.content)}</div><div class="choices">${(b.choices||[]).map((x,i)=>`<div><span class="choice-mark">${marks[i]}</span>${nl(x)}</div>`).join('')}</div>${displayMode==='teacher'&&b.answer?`<div class="answer-display">答　${nl(b.answer)}</div>`:''}</div></div>`;}
     if(b.type==='table'){body=`<table class="worksheet-table"><tbody>${Array.from({length:b.rows||2},(_,r)=>`<tr>${Array.from({length:b.cols||2},(_,c)=>{const i=r*(b.cols||2)+c;return `<td contenteditable="true" data-table-cell="${i}">${nl((b.cells||[])[i]||'')}</td>`}).join('')}</tr>`).join('')}</tbody></table>`;}
     if(b.type==='image'||b.type==='navi') body=b.imageUrl?`<img src="${esc(b.imageUrl)}" alt="${b.type==='navi'?'学習イラスト':'挿入画像'}">`:'<div class="placeholder-image">画像を選んでください</div>';
@@ -239,6 +241,7 @@
     if(b.type==='text') html+=field('文字サイズ（pt）','fontSize',b.fontSize||10.5,'number')+field('行間','lineHeight',b.lineHeight||1.65,'number')+segment('枠','frame',!!b.frame,[['true','あり'],['false','なし']]);
     if(['question','choice'].includes(b.type)) html+=segment('問題番号','numbered',b.numbered!==false,[['true','あり'],['false','なし']]);
     if(b.type==='choice') html+=choiceSettings(b);
+    if(b.type==='kanji') html+=field('見本（1マス目に薄く表示）','sample',b.sample||'')+`<div class="inline-fields">${field('行','rows',b.rows||2,'number')}${field('列','cols',b.cols||8,'number')}</div>`+segment('マスの大きさ','cellSize',b.cellSize||'medium',[['small','小'],['medium','中'],['large','大']]);
     if(['ruled','calc','grid','image','navi','reflection','answerline'].includes(b.type)) html+=heightControl(b);
     if(b.type==='ruled'||b.type==='reflection') html+=segment('罫線','lines',b.lines!==false,[['true','あり'],['false','なし']])+field('行の間隔（mm）','lineGap',b.lineGap||8,'number');
     if(b.type==='calc') html+=segment('計算欄','pattern',b.pattern||'blank',[['blank','白紙'],['lines','横罫'],['grid','方眼']]);
@@ -270,11 +273,12 @@
   function handleSettingsChange(e){
     const b=getSelected();if(!b)return;
     if(e.target.id==='imageFile'&&e.target.files[0]){const file=e.target.files[0];if(file.size>4*1024*1024){toast('画像は4MB以下をおすすめします');return;}const reader=new FileReader();reader.onload=()=>{commit();b.imageUrl=reader.result;changed();};reader.readAsDataURL(file);}
-    if(e.target.dataset.prop==='rows'||e.target.dataset.prop==='cols'){resizeTable(b);changed();}
+    if(e.target.dataset.prop==='rows'||e.target.dataset.prop==='cols'){if(b.type==='table')resizeTable(b);if(b.type==='kanji')resizeKanji(b);changed();}
   }
   $('#settingsContent').addEventListener('click',e=>{const b=getSelected();if(!b)return;const a=e.target.dataset.choiceAction;if(a){commit();if(a==='add'&&b.choices.length<6)b.choices.push(`選択肢${b.choices.length+1}`);if(a==='remove'&&b.choices.length>2)b.choices.pop();changed();}});
   function resizeTable(b){b.rows=Math.max(1,Math.min(10,Number(b.rows)||1));b.cols=Math.max(1,Math.min(8,Number(b.cols)||1));const old=b.cells||[];b.cells=Array.from({length:b.rows*b.cols},(_,i)=>old[i]||'');}
-  function setBlockProp(prop,value){const b=getSelected();if(!b)return;commit();b[prop]=value;if((prop==='rows'||prop==='cols')&&b.type==='table')resizeTable(b);changed();}
+  function resizeKanji(b){b.rows=Math.max(1,Math.min(8,Number(b.rows)||1));b.cols=Math.max(1,Math.min(16,Number(b.cols)||1));}
+  function setBlockProp(prop,value){const b=getSelected();if(!b)return;commit();b[prop]=value;if((prop==='rows'||prop==='cols')&&b.type==='table')resizeTable(b);if((prop==='rows'||prop==='cols')&&b.type==='kanji')resizeKanji(b);changed();}
   function parseValue(v){if(v==='true')return true;if(v==='false')return false;if(v!==''&&!Number.isNaN(Number(v)))return Number(v);return v;}
 
   function commit(){ if(!worksheet)return;history.push(JSON.stringify(worksheet));if(history.length>30)history.shift();future=[]; }
