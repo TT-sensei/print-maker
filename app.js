@@ -59,7 +59,7 @@
       choice:{content:'問題文を入力してください。',answer:'',width:100,marker:'kana',choices:['選択肢1','選択肢2','選択肢3','選択肢4'],writingMode:'auto'},
       table:{content:'',width:100,rows:3,cols:3,cells:Array(9).fill(''),writingMode:'horizontal'},
       image:{content:'',width:100,height:45,imageUrl:'',alignment:'center',writingMode:'horizontal'},
-      navi:{content:'',width:100,height:40,imageUrl:NAVI_BASE+NAVI[0][1],alignment:'right',writingMode:'horizontal'},
+      navi:{content:'',width:33,height:32,imageUrl:NAVI_BASE+NAVI[0][1],alignment:'right',writingMode:'horizontal'},
       summary:{content:'学習のまとめを書きます。',width:100,alignment:'left',writingMode:'auto'},
       reflection:{content:'わかったこと',width:100,height:24,lines:true,writingMode:'auto'},
       score:{content:'得点',width:33,total:100,writingMode:'horizontal'}
@@ -166,7 +166,8 @@
     closeModal(); openEditor(w); toast(`${p.name}のひな形を開きました`);
   }
 
-  function openEditor(data){ worksheet=clone(data); selectedId=null; history=[];future=[]; $('#startScreen').classList.add('hidden');$('#editor').classList.remove('hidden');location.hash='edit';renderWorkspace();scheduleSave(); }
+  function openEditor(data){worksheet=clone(data);migrateWorksheet(worksheet);selectedId=null;history=[];future=[];$('#startScreen').classList.add('hidden');$('#editor').classList.remove('hidden');location.hash='edit';renderWorkspace();scheduleSave();}
+  function migrateWorksheet(w){if(!Array.isArray(w.blocks))w.blocks=[];w.blocks.forEach(b=>{if(b.type==='navi'&&Number(b.width)===100&&Number(b.height||40)===40&&b.alignment==='right'){b.width=33;b.height=32;}});return w;}
   function showStart(){ $('#editor').classList.add('hidden');$('#startScreen').classList.remove('hidden');location.hash='';const d=read(STORAGE.draft,null);$('#draftInfo').textContent=d?`${d.name||d.title}（${formatDate(d.updatedAt)}）`:'まだ自動保存はありません'; }
 
   function renderWorkspace(){
@@ -187,7 +188,7 @@
   function renderPagesInto(container, editing){
     const pages=paginate();
     container.classList.toggle('editing',editing);
-    container.innerHTML=pages.map((rows,i)=>`<div class="page-wrap"><div class="page-label">${i+1} / ${pages.length}ページ</div><article class="page ${worksheet.orientation} ${worksheet.writingMode==='vertical'?'vertical-root':''}"><div class="page-content">${i===0?renderHeader():''}${rows.map(row=>`<div class="page-row">${row.map(renderBlock).join('')}</div>`).join('')}</div></article></div>`).join('');
+    container.innerHTML=pages.map((rows,i)=>`<div class="page-wrap"><div class="page-label">${i+1} / ${pages.length}ページ</div><article class="page ${worksheet.orientation} ${worksheet.writingMode==='vertical'?'vertical-root':''}"><div class="page-content">${i===0?renderHeader():''}${rows.map(row=>`<div class="page-row ${row.length===1&&row[0].type==='navi'?`navi-only align-${row[0].alignment||'right'}`:''}">${row.map(renderBlock).join('')}</div>`).join('')}</div></article></div>`).join('');
     if(!editing)container.querySelectorAll('[contenteditable]').forEach(x=>x.contentEditable='false');
     if(editing)requestAnimationFrame(()=>container.querySelectorAll('.page-wrap').forEach(wrap=>{const content=wrap.querySelector('.page-content'),label=wrap.querySelector('.page-label');if(content.scrollHeight>content.clientHeight+2){label.classList.add('warning');label.textContent+='・内容が多すぎます';}}));
     $('#pageCount').textContent=`${pages.length}ページ`;
