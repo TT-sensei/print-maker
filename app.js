@@ -115,7 +115,8 @@
       const field=$(`#settingsContent [data-prop="${inline.dataset.inlineProp}"]`);if(field&&selectedId===b.id)field.value=b[inline.dataset.inlineProp];
     });
     document.addEventListener('focusout', e => {
-      const inline=e.target.closest('[data-inline-prop]');if(inline&&!$('#previewOverlay').contains(inline))setTimeout(()=>renderWorkspace(),0);
+      const inline=e.target.closest('[data-inline-prop]'),cell=e.target.closest('[data-table-cell]');
+      if((inline||cell)&&!$('#previewOverlay').contains(e.target))setTimeout(()=>{if(!e.target.isConnected)return;renderWorkspace();},0);
     },true);
     $('#modalBody').addEventListener('change', e => { if(e.target.id==='importJsonFile'&&e.target.files[0])importWorksheetJson(e.target.files[0]); });
     window.addEventListener('afterprint',()=>document.body.classList.remove('print-landscape'));
@@ -369,9 +370,10 @@
     return new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const max=1600,scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);URL.revokeObjectURL(url);resolve(canvas.toDataURL('image/webp',.84));}catch(err){URL.revokeObjectURL(url);reject(err);}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('image'));};img.src=url;});
   }
 
-  function commit(){ if(!worksheet)return;history.push(JSON.stringify(worksheet));if(history.length>30)history.shift();future=[]; }
-  function undo(){if(!history.length)return;future.push(JSON.stringify(worksheet));worksheet=JSON.parse(history.pop());selectedId=worksheet.blocks.some(b=>b.id===selectedId)?selectedId:null;changed();}
-  function redo(){if(!future.length)return;history.push(JSON.stringify(worksheet));worksheet=JSON.parse(future.pop());selectedId=worksheet.blocks.some(b=>b.id===selectedId)?selectedId:null;changed();}
+  function pushHistory(stack,snapshot){stack.push(snapshot);if(stack.length>30)stack.splice(0,stack.length-30);}
+  function commit(){if(!worksheet)return;pushHistory(history,JSON.stringify(worksheet));future=[];updateUndoButtons();}
+  function undo(){if(!history.length)return;pushHistory(future,JSON.stringify(worksheet));worksheet=JSON.parse(history.pop());selectedId=worksheet.blocks.some(b=>b.id===selectedId)?selectedId:null;changed();}
+  function redo(){if(!future.length)return;pushHistory(history,JSON.stringify(worksheet));worksheet=JSON.parse(future.pop());selectedId=worksheet.blocks.some(b=>b.id===selectedId)?selectedId:null;changed();}
   function updateUndoButtons(){$('#undoBtn').disabled=!history.length;$('#redoBtn').disabled=!future.length;}
   function changed(full=true){worksheet.updatedAt=new Date().toISOString();scheduleSave();if(full)renderWorkspace();else{renderPagesInto($('#pages'),true);$('#saveStatus').textContent='保存中…';}}
   function scheduleSave(){clearTimeout(saveTimer);$('#saveStatus').textContent='保存中…';saveTimer=setTimeout(()=>{try{write(STORAGE.draft,worksheet);$('#saveStatus').textContent='保存しました';}catch{toast('保存容量がいっぱいです。大きな画像を減らしてください');$('#saveStatus').textContent='保存できません';}},450);}
