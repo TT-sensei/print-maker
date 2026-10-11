@@ -46,3 +46,8 @@
   .ruled-line{print-color-adjust:exact;-webkit-print-color-adjust:exact}
   .print-grid-svg{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
+
+/* Shared normal-weight worksheet borders; stronger title/section frames remain intentional emphasis. */
+.student-info .fill{border-bottom:var(--worksheet-rule-width,.3mm) solid var(--worksheet-rule-color,#777)}
+.block-text.has-frame .content{border:var(--worksheet-rule-width,.3mm) solid var(--worksheet-rule-color,#777)}
+@media print{.block.has-frame{border-color:transparent!important}}
