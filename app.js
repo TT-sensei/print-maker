@@ -337,10 +337,10 @@
     if(b.type==='checklist'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="checklist-items">${items.map(x=>`<div class="checklist-item"><span class="check-box" aria-hidden="true"></span><span>${esc(x)}</span></div>`).join('')}</div>`;}
     if(b.type==='compare') body=`<div class="compare-grid" style="--compare-height:${Math.max(12,Number(b.height)||42)}mm"><section><h4>${esc(b.leftTitle||'前の考え')}</h4><div>${nl(b.leftContent||'')}</div></section><section><h4>${esc(b.rightTitle||'今の考え')}</h4><div>${nl(b.rightContent||'')}</div></section></div>`;
     if(b.type==='flow'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="flow-items">${items.map((x,i)=>`${i?'<span class="flow-arrow" aria-hidden="true">→</span>':''}<div class="flow-step">${esc(x)}</div>`).join('')}</div>`;}
-    if(b.type==='wordbank'){const items=String(b.content||'').split(/[、,，\\n]/).map(x=>x.trim()).filter(Boolean);body=`<div class="wordbank-box"><strong>ヒント・使える言葉</strong><div>${items.map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>`;}
+    if(b.type==='wordbank'){const items=String(b.content||'').split(/[、,，\r\n]/).map(x=>x.trim()).filter(Boolean);body=`<div class="wordbank-box"><strong>ヒント・使える言葉</strong><div>${items.map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>`;}
     if(b.type==='bubble') body=`<div class="speech-card"><strong>${esc(b.label||'考え')}</strong><div>${nl(b.content)}</div></div>`;
     if(b.type==='rubric'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<table class="rubric-table"><thead><tr><th>ふり返ること</th><th>できた</th><th>もう少し</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x)}</td><td>○</td><td>○</td></tr>`).join('')}</tbody></table>`;}
-    if(b.type==='sequence'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="sequence-items">${items.map((x,i)=>`<div class="sequence-card"><span>${i+1}</span><div>${esc(x.replace(/^\\d+[.、．]?\\s*/,''))}</div></div>`).join('')}</div>`;}
+    if(b.type==='sequence'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="sequence-items">${items.map((x,i)=>`<div class="sequence-card"><span>${i+1}</span><div>${esc(x.replace(/^\d+[.、．]?\s*/,''))}</div></div>`).join('')}</div>`;}
     return `<section class="${blockClasses(b)}" style="${style}" data-id="${b.id}">${actionBar()}${body}</section>`;
   }
 
