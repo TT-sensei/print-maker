@@ -285,7 +285,7 @@
     const chars=String(b.content||'').length, width=Math.max(.25,(Number(b.width)||100)/100), writing=resolvedWriting(b);
     if(['ruled','calc','grid','image','navi','reflection','answerline'].includes(b.type)) return Math.max(6,Number(b.height)||30);
     if(b.type==='table')return Math.max(1,Number(b.rows)||3)*10+4;
-    if(b.type==='kanji'){const rows=Math.max(1,Number(b.rows)||2),size={small:10,medium:12,large:16}[b.cellSize]||14;return rows*size+(rows-1)*1.2+3;}
+    if(b.type==='kanji'){const rows=Math.max(1,Number(b.rows)||2),size={small:10,medium:12,large:16}[b.cellSize]||14;return rows*size+(rows-1)*.6+3;}
     if(b.type==='choice')return Math.max(22,12+Math.ceil(chars/(55*width))*7+Math.ceil((b.choices||[]).length/2)*8);
     if(b.type==='question')return Math.max(14,Math.ceil(chars/(55*width))*7+7+(displayMode==='teacher'&&b.answer?10:0));
     if(b.type==='heading')return Math.max(12,Math.ceil(chars/(22*width))*9+3);
