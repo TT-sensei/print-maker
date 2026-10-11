@@ -202,6 +202,7 @@
       const wrap=document.createElement('div');
       wrap.className='page-wrap';
       wrap.innerHTML=`<div class="page-label"></div><article class="page ${worksheet.orientation} ${worksheet.writingMode==='vertical'?'vertical-root':''}"><div class="page-content"></div></article>`;
+      wrap.querySelector('.page').style.zoom='1';
       return wrap;
     };
     let wraps=[...container.querySelectorAll('.page-wrap')],guard=0;
