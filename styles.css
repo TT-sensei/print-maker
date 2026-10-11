@@ -51,3 +51,8 @@
 .student-info .fill{border-bottom:var(--worksheet-rule-width,.3mm) solid var(--worksheet-rule-color,#777)}
 .block-text.has-frame .content{border:var(--worksheet-rule-width,.3mm) solid var(--worksheet-rule-color,#777)}
 @media print{.block.has-frame{border-color:transparent!important}}
+
+@media print{
+  .goal-label{background:transparent!important;color:var(--subject)!important;border:var(--worksheet-rule-width,.3mm) solid var(--subject)}
+  .block-heading.has-bg .content{background:transparent!important}
+}
