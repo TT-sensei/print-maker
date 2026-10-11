@@ -89,3 +89,8 @@
 @media print{
   .block-compare .compare-grid h4,.block-wordbank .wordbank-box,.block-flow .flow-step,.block-bubble .speech-card,.block-rubric .rubric-table th{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
+
+.block-match .match-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(12mm,.55fr) minmax(0,1fr);align-items:stretch;gap:1.5mm 2mm}
+.block-match .match-left,.block-match .match-right{border:.35mm solid var(--worksheet-rule-color,#777);padding:2mm;min-height:9mm;display:flex;align-items:center;overflow-wrap:anywhere;font-size:10.5pt}
+.block-match .match-middle{min-height:9mm;position:relative}
+.block-match .match-middle:after{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:.2mm dashed #b7bfbb}
