@@ -84,7 +84,9 @@
     {id:'science',icon:'⚗',name:'理科',desc:'予想・結果・考察',subject:'science',build:w=>addPreset(w,[['goal',{}],['heading',{content:'予想'}],['ruled',{height:25}],['heading',{content:'実験・観察'}],['text',{content:'方法や注意点を書きます。',frame:true}],['heading',{content:'結果'}],['ruled',{height:30}],['summary',{content:'考察・まとめ'}],['ruled',{height:30}]])},
     {id:'social',icon:'地',name:'社会',desc:'資料・問題・まとめ',subject:'social',build:w=>addPreset(w,[['heading',{content:'資料'}],['image',{}],['question',{}],['ruled',{height:35}],['summary',{}]])},
     {id:'test',icon:'点',name:'ミニテスト',desc:'得点欄と問題',subject:'other',build:w=>addPreset(w,[['score',{}],['question',{}],['answerline',{}],['question',{}],['answerline',{}],['question',{}],['answerline',{}]])},
-    {id:'reflection',icon:'↗',name:'ふりかえり',desc:'できたことと次の目標',subject:'other',build:w=>addPreset(w,[['goal',{content:'今日のめあて'}],['reflection',{content:'できたこと',height:24}],['reflection',{content:'わかったこと',height:30}],['reflection',{content:'次にがんばること',height:24}]])}
+    {id:'reflection',icon:'↗',name:'ふりかえり',desc:'できたことと次の目標',subject:'other',build:w=>addPreset(w,[['goal',{content:'今日のめあて'}],['reflection',{content:'できたこと',height:24}],['reflection',{content:'わかったこと',height:30}],['reflection',{content:'次にがんばること',height:24}]])},
+    {id:'freeprogress',icon:'✓',name:'自分で学ぶ',desc:'手順・ヒント・振り返り',subject:'other',build:w=>addPreset(w,[['goal',{content:'今日の学習のめあて'}],['checklist',{content:'課題を確認する\\n自分で取り組む\\n答えを確かめる\\n振り返りを書く'}],['wordbank',{content:'まず、次に、理由は、例えば、分かったことは'}],['reflection',{content:'分かったこと・できるようになったこと',height:30}],['reflection',{content:'次に取り組みたいこと',height:24}]])},
+    {id:'compare',icon:'⇄',name:'考えを比べる',desc:'予想・結果や前後の考え',subject:'science',build:w=>addPreset(w,[['goal',{content:'予想と結果を比べよう'}],['compare',{leftTitle:'予想',rightTitle:'結果',height:55}],['summary',{content:'比べて気付いたこと'}],['ruled',{height:30}]])}
   ];
   function addPreset(w, list){ w.blocks=list.map(([t,o])=>makeBlock(t,o)); return w; }
 
