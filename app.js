@@ -486,7 +486,7 @@
       if(b.type==='kanji')b.cellSize=pick(b.cellSize,['small','medium','large'],'medium');
       if(b.type==='calc')b.pattern=pick(b.pattern,['blank','lines','grid'],'blank');
       if(b.type==='choice'){
-        b.marker=pick(b.marker,['kana','number','alpha'],'kana');
+        b.marker=pick(b.marker,['kana','number'],'kana');
         b.choices=(Array.isArray(source.choices)?source.choices:[]).slice(0,6).map(v=>shortText(v,300));
         while(b.choices.length<2)b.choices.push('');
       }
