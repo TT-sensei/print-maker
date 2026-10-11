@@ -453,7 +453,11 @@
   function plainField(label,id,current,type='text'){return `<label class="field"><span>${label}</span><input id="${id}" type="${type}" value="${esc(current||'')}"></label>`;}
   function applyPaperSettings(){commit();Object.assign(worksheet,{subject:$('#paperSubject').value,orientation:$('#paperOrientation').value,writingMode:$('#paperWriting').value,margin:$('#paperMargin').value,fontSize:$('#paperFont').value,lineHeight:$('#paperLine').value,title:$('#paperTitle').value,subtitle:$('#paperSubtitle').value,grade:$('#paperGrade').value,className:$('#paperClass').value,date:$('#paperDate').value,showGrade:$('#showGrade').checked,showClass:$('#showClass').checked,showName:$('#showName').checked,showDate:$('#showDate').checked});if(!worksheet.name||worksheet.name==='無題のプリント')worksheet.name=worksheet.title;closeModal();changed();}
 
-  function openPreview(){renderPagesInto($('#previewPages'),false);$('#previewOverlay').classList.remove('hidden');}
+  function openPreview(){
+    const overlay=$('#previewOverlay');
+    overlay.classList.remove('hidden');
+    renderPagesInto($('#previewPages'),false);
+  }
   function closePreview(){$('#previewOverlay').classList.add('hidden');}
   function printWorksheet(){
     document.body.classList.toggle('print-landscape',worksheet.orientation==='landscape');
