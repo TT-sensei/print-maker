@@ -162,7 +162,9 @@
         const b=worksheet.blocks.find(x=>x.id===list.closest('.block')?.dataset.id);if(!b)return;
         const prop=list.dataset.inlineListProp,index=Number(list.dataset.inlineListIndex),value=list.innerText.replace(/\u00a0/g,' ').replace(/\r?\n/g,' ').trim();
         if(Array.isArray(b[prop])){while(b[prop].length<=index)b[prop].push('');b[prop][index]=value;}else{const comma=list.dataset.inlineListSeparator==='comma',values=String(b[prop]||'').split(comma?/[、,，\r\n]/:/\r?\n/);while(values.length<=index)values.push('');values[index]=value;b[prop]=values.join(comma?'、':'\n');}
-        worksheet.updatedAt=new Date().toISOString();scheduleSave();return;
+        worksheet.updatedAt=new Date().toISOString();scheduleSave();
+        if(selectedId===b.id){const field=Array.isArray(b[prop])? $(`#settingsContent [data-choice="${index}"]`):$(`#settingsContent [data-prop="${prop}"]`);if(field)field.value=Array.isArray(b[prop])?value:b[prop];}
+        return;
       }
     });
     document.addEventListener('input', e => {
