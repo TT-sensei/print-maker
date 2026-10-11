@@ -378,14 +378,49 @@
 
   function openPresetDialog(){openModal('新しいプリント','ひな形を選ぶ',`<div class="template-grid">${PRESETS.map(p=>`<button class="template-card" data-preset="${p.id}"><span>${p.icon}</span><b>${p.name}</b><small>${p.desc}</small></button>`).join('')}</div>`);}
   function openSaveDialog(){openModal('保存','あとで使えるように残す',`<label class="field"><span>プリント名</span><input id="saveName" value="${esc(worksheet.name||worksheet.title)}"></label><p class="panel-help">「プリントとして保存」は内容も残します。「テンプレート」はコピーを作るためのひな形として保存します。</p><div class="form-actions"><button id="saveTemplateAction">テンプレートとして保存</button><button id="saveDocumentAction" class="accent">プリントとして保存</button></div>`);setTimeout(()=>$('#saveName')?.select(),0);}
-  function saveNamed(kind){const name=$('#saveName').value.trim()||worksheet.title||'無題のプリント';worksheet.name=name;worksheet.updatedAt=new Date().toISOString();const key=kind==='template'?STORAGE.templates:STORAGE.documents;const items=read(key,[]);const saved=clone(worksheet);saved.id=uid();saved.name=name;items.unshift(saved);try{write(key,items.slice(0,40));write(STORAGE.draft,worksheet);closeModal();renderWorkspace();toast(kind==='template'?'テンプレートに保存しました':'プリントを保存しました');}catch{toast('保存容量がいっぱいです');}}
+  function saveNamed(kind){
+    const name=$('#saveName').value.trim()||worksheet.title||'無題のプリント';
+    const key=kind==='template'?STORAGE.templates:STORAGE.documents;
+    const items=read(key,[]),saved=clone(worksheet);
+    saved.id=uid();saved.name=name;saved.updatedAt=new Date().toISOString();
+    items.unshift(saved);
+    try{
+      writeMany([[key,items.slice(0,40)],[STORAGE.draft,{...worksheet,name,updatedAt:saved.updatedAt}]]);
+      worksheet.name=name;worksheet.updatedAt=saved.updatedAt;
+      closeModal();renderWorkspace();
+      toast(kind==='template'?'テンプレートに保存しました':'プリントを保存しました');
+    }catch{toast('保存容量がいっぱいです。画像を減らすか、JSONに書き出してください');}
+  }
+  function writeMany(entries){
+    const previous=entries.map(([key])=>[key,localStorage.getItem(key)]);
+    try{entries.forEach(([key,value])=>write(key,value));}
+    catch(error){
+      for(const [key,value] of previous){try{if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value);}catch{}}
+      throw error;
+    }
+  }
   function openLibraryDialog(fromStart){const docs=read(STORAGE.documents,[]),temps=read(STORAGE.templates,[]);const rows=(items,kind)=>items.length?items.map(x=>`<div class="template-row"><div><b>${esc(x.name||x.title)}</b><small>${SUBJECTS[x.subject]?.label||'その他'}・${x.orientation==='landscape'?'A4横':'A4縦'}・${formatDate(x.updatedAt)}</small></div><button class="use" data-use-doc="${x.id}" data-kind="${kind}">コピーして作る</button><button data-delete-saved="${x.id}" data-kind="${kind}">削除</button></div>`).join(''):'<p class="panel-help">まだ保存されていません。</p>';openModal('マイテンプレート','保存した形から作る',`<h3>マイテンプレート</h3><div class="template-list">${rows(temps,'template')}</div><h3 style="margin-top:24px">保存したプリント</h3><div class="template-list">${rows(docs,'document')}</div>`);}
   function useSaved(id,kind){const items=read(kind==='template'?STORAGE.templates:STORAGE.documents,[]),src=items.find(x=>x.id===id);if(!src)return;const w=clone(src);w.id=uid();w.name=`${src.name} のコピー`;w.createdAt=w.updatedAt=new Date().toISOString();closeModal();openEditor(w);toast('コピーを作りました');}
-  function deleteSaved(id,kind){const key=kind==='template'?STORAGE.templates:STORAGE.documents,items=read(key,[]),item=items.find(x=>x.id===id);if(!item||!confirm(`「${item.name||item.title}」を削除しますか？`))return;write(key,items.filter(x=>x.id!==id));openLibraryDialog(false);toast('削除しました');}
+  function deleteSaved(id,kind){const key=kind==='template'?STORAGE.templates:STORAGE.documents,items=read(key,[]),item=items.find(x=>x.id===id);if(!item||!confirm(`「${item.name||item.title}」を削除しますか？`))return;try{write(key,items.filter(x=>x.id!==id));openLibraryDialog(false);toast('削除しました');}catch{toast('削除内容を保存できませんでした。空き容量を確認してください');}}
 
-  function openDataDialog(){openModal('データの入出力','バックアップ・AIとの受け渡し',`<div class="data-cards"><section><b>JSONを書き出す</b><p>現在のプリントを、画像や設定を含めて1つのファイルに保存します。バックアップや、AIへ渡して編集するときに使えます。</p><button id="exportDataAction" class="data-action">JSONを書き出す</button></section><section><b>JSONを読み込む</b><p>プリント工房から書き出したデータや、同じ形式でAIが作成したデータを読み込みます。現在の作業は自動保存に残ります。</p><label class="data-action file-action">JSONを選ぶ<input id="importJsonFile" type="file" accept="application/json,.json"></label></section></div><p class="data-tip">AIには「このJSONの構造を保ったまま、問題文やパーツ構成を変更してください」と伝えると安定します。</p>`);}
+  function openDataDialog(){openModal('データの入出力','バックアップ・AIとの受け渡し',`<div class="data-cards"><section><b>JSONを書き出す</b><p>現在のプリントを、画像や設定を含めて1つのファイルに保存します。バックアップや、AIへ渡して編集するときに使えます。</p><button id="exportDataAction" class="data-action">JSONを書き出す</button></section><section><b>JSONを読み込む</b><p>プリント工房から書き出したデータや、同じ形式でAIが作成したデータを読み込みます。読み込むと編集中のプリントと自動保存データが置き換わるため、必要なら先にJSONを書き出してください。</p><label class="data-action file-action">JSONを選ぶ<input id="importJsonFile" type="file" accept="application/json,.json"></label></section></div><p class="data-tip">AIには「このJSONの構造を保ったまま、問題文やパーツ構成を変更してください」と伝えると安定します。</p>`);}
   function exportWorksheetJson(){const payload={format:'print-kobo',version:1,exportedAt:new Date().toISOString(),worksheet:clone(worksheet)},blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`${safeFileName(worksheet.name||worksheet.title||'print')}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('JSONを書き出しました');}
-  function importWorksheetJson(file){if(file.size>12*1024*1024){toast('JSONファイルが大きすぎます');return;}const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result),w=normalizeWorksheetData(parsed);closeModal();openEditor(w);toast('JSONからプリントを作りました');}catch{toast('プリント工房のJSONとして読み込めませんでした');}};reader.onerror=()=>toast('ファイルを読み込めませんでした');reader.readAsText(file);}
+  function importWorksheetJson(file){
+    if(file.size>12*1024*1024){toast('JSONファイルが大きすぎます');return;}
+    if(worksheet&&!confirm('JSONを読み込むと、編集中のプリントと自動保存データが置き換わります。必要なら先にJSONを書き出してください。読み込みますか？'))return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const parsed=JSON.parse(reader.result);
+        if(parsed?.format&&parsed.format!=='print-kobo')throw new Error('format');
+        if(parsed?.format==='print-kobo'&&parsed.version!==1)throw new Error('version');
+        const w=normalizeWorksheetData(parsed);
+        closeModal();openEditor(w);toast('JSONからプリントを作りました');
+      }catch{toast('プリント工房のJSONとして読み込めませんでした');}
+    };
+    reader.onerror=()=>toast('ファイルを読み込めませんでした');
+    reader.readAsText(file);
+  }
   function normalizeWorksheetData(raw){
     const src=raw?.worksheet||raw;
     if(!src||!Array.isArray(src.blocks))throw new Error('format');
