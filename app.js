@@ -143,6 +143,28 @@
       const b=worksheet.blocks.find(x=>x.id===cell.closest('.block')?.dataset.id); if(!b)return;
       b.cells[Number(cell.dataset.tableCell)]=cell.innerText; worksheet.updatedAt=new Date().toISOString();scheduleSave();
     });
+    document.addEventListener('focusin', e => {
+      const title=e.target.closest('[data-worksheet-prop]');
+      if(title && !title.dataset.started && !$('#previewOverlay').contains(title)){commit();title.dataset.started='1';}
+      const list=e.target.closest('[data-inline-list-prop]');
+      if(list && !list.dataset.started && !$('#previewOverlay').contains(list)){commit();list.dataset.started='1';}
+    });
+    document.addEventListener('input', e => {
+      const title=e.target.closest('[data-worksheet-prop]');
+      if(title && !$('#previewOverlay').contains(title)){
+        worksheet[title.dataset.worksheetProp]=title.innerText.replace(/\\u00a0/g,' ').trim();
+        worksheet.updatedAt=new Date().toISOString();scheduleSave();
+        $('#documentName').textContent=worksheet.name||worksheet.title||'無題のプリント';
+        return;
+      }
+      const list=e.target.closest('[data-inline-list-prop]');
+      if(list && !$('#previewOverlay').contains(list)){
+        const b=worksheet.blocks.find(x=>x.id===list.closest('.block')?.dataset.id);if(!b)return;
+        const prop=list.dataset.inlineListProp,index=Number(list.dataset.inlineListIndex);
+        const values=String(b[prop]||'').split(/\\r?\\n/);while(values.length<=index)values.push('');values[index]=list.innerText.replace(/\\u00a0/g,' ').replace(/\\r?\\n/g,' ').trim();b[prop]=values.join('\\n');
+        worksheet.updatedAt=new Date().toISOString();scheduleSave();return;
+      }
+    });
     document.addEventListener('input', e => {
       const inline=e.target.closest('[data-inline-prop]'); if(!inline || $('#previewOverlay').contains(inline))return;
       const b=worksheet.blocks.find(x=>x.id===inline.closest('.block')?.dataset.id); if(!b)return;
@@ -153,7 +175,7 @@
       if($('#previewOverlay').contains(e.target))return;
       // Reset edit-session markers without rebuilding the workspace: rebuilding here
       // can steal focus when moving between table cells or inline-editable blocks.
-      const editable=e.target.closest('[data-inline-prop],[data-table-cell],[data-prop],[data-choice],[data-cell]');
+      const editable=e.target.closest('[data-inline-prop],[data-inline-list-prop],[data-worksheet-prop],[data-table-cell],[data-prop],[data-choice],[data-cell]');
       if(editable)delete editable.dataset.started;
     },true);
     $('#modalBody').addEventListener('change', e => {
@@ -283,7 +305,7 @@
     if(worksheet.showGrade) info.push(`<span class="fill">${esc(worksheet.grade)}</span>年`);
     if(worksheet.showClass) info.push(`<span class="fill">${esc(worksheet.className)}</span>組`);
     if(worksheet.showName) info.push(`名前 <span class="fill name-fill"></span>`);
-    return `<header class="worksheet-header"><div class="worksheet-title-row"><div><div class="worksheet-title">${esc(worksheet.title)}</div>${worksheet.subtitle?`<div class="worksheet-subtitle">${esc(worksheet.subtitle)}</div>`:''}</div></div>${info.length?`<div class="student-info">${info.join('　')}</div>`:''}</header>`;
+    return `<header class="worksheet-header"><div class="worksheet-title-row"><div><div class="worksheet-title inline-edit" contenteditable="plaintext-only" data-worksheet-prop="title">${esc(worksheet.title)}</div>${worksheet.subtitle?`<div class="worksheet-subtitle inline-edit" contenteditable="plaintext-only" data-worksheet-prop="subtitle">${esc(worksheet.subtitle)}</div>`:`<div class="worksheet-subtitle inline-edit subtitle-empty" contenteditable="plaintext-only" data-worksheet-prop="subtitle" data-placeholder="サブタイトルを入力"></div>`}</div></div>${info.length?`<div class="student-info">${info.join('　')}</div>`:''}</header>`;
   }
 
   function paginate(){
@@ -352,15 +374,15 @@
     if(b.type==='table'){body=`<table class="worksheet-table"><tbody>${Array.from({length:b.rows||2},(_,r)=>`<tr>${Array.from({length:b.cols||2},(_,c)=>{const i=r*(b.cols||2)+c;return `<td contenteditable="true" data-table-cell="${i}">${nl((b.cells||[])[i]||'')}</td>`}).join('')}</tr>`).join('')}</tbody></table>`;}
     if(b.type==='image'||b.type==='navi') body=b.imageUrl?`<img src="${esc(b.imageUrl)}" alt="${b.type==='navi'?'学習イラスト':'挿入画像'}">`:'<div class="placeholder-image">画像を選んでください</div>';
     if(b.type==='reflection') { const gap=Math.max(3,Number(b.lineGap)||8), count=Math.max(1,Math.floor(Math.max(8,(Number(b.height)||30)-10)/gap)); body=`<div class="reflection-heading">ふりかえり</div><div class="reflection-label inline-edit" contenteditable="plaintext-only" data-inline-prop="content">${nl(b.content)}</div><div class="ruled-area ${b.lines===false?'no-lines':''}" style="--line-gap:${gap}mm">${b.lines===false?'':Array.from({length:count},()=>'<span class="ruled-line" aria-hidden="true"></span>').join('')}</div>`; }
-    if(b.type==='score') body=`<div class="score-line">${esc(b.content||'得点')}　　／ ${Number(b.total)||100} 点</div>`;
-    if(b.type==='checklist'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="checklist-items">${items.map(x=>`<div class="checklist-item"><span class="check-box" aria-hidden="true"></span><span>${esc(x)}</span></div>`).join('')}</div>`;}
+    if(b.type==='score') body=`<div class="score-line"><span class="inline-edit" contenteditable="plaintext-only" data-inline-prop="content">${esc(b.content||'得点')}</span>　　／ ${Number(b.total)||100} 点</div>`;
+    if(b.type==='checklist'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="checklist-items inline-edit" contenteditable="plaintext-only" data-inline-prop="content">${items.map(x=>`<div class="checklist-item"><span class="check-box" aria-hidden="true"></span><span>${esc(x)}</span></div>`).join('')}</div>`;}
     if(b.type==='compare') body=`<div class="compare-grid" style="--compare-height:${Math.max(12,Number(b.height)||42)}mm"><section><h4>${esc(b.leftTitle||'前の考え')}</h4><div>${nl(b.leftContent||'')}</div></section><section><h4>${esc(b.rightTitle||'今の考え')}</h4><div>${nl(b.rightContent||'')}</div></section></div>`;
-    if(b.type==='flow'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="flow-items">${items.map((x,i)=>`${i?'<span class="flow-arrow" aria-hidden="true">→</span>':''}<div class="flow-step">${esc(x)}</div>`).join('')}</div>`;}
-    if(b.type==='wordbank'){const items=String(b.content||'').split(/[、,，\r\n]/).map(x=>x.trim()).filter(Boolean);body=`<div class="wordbank-box"><strong>ヒント・使える言葉</strong><div>${items.map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>`;}
-    if(b.type==='bubble') body=`<div class="speech-card"><strong>${esc(b.label||'考え')}</strong><div>${nl(b.content)}</div></div>`;
-    if(b.type==='rubric'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<table class="rubric-table"><thead><tr><th>ふり返ること</th><th>できた</th><th>もう少し</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x)}</td><td>○</td><td>○</td></tr>`).join('')}</tbody></table>`;}
-    if(b.type==='sequence'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="sequence-items">${items.map((x,i)=>`<div class="sequence-card"><span>${i+1}</span><div>${esc(x.replace(/^\d+[.、．]?\s*/,''))}</div></div>`).join('')}</div>`;}
-    if(b.type==='match'){const left=String(b.leftItems||'').split(/\r?\n/).filter(x=>x.trim()),right=String(b.rightItems||'').split(/\r?\n/).filter(x=>x.trim()),rows=Math.max(left.length,right.length);body=`<div class="match-grid">${Array.from({length:rows},(_,i)=>`<div class="match-left">${esc(left[i]||'')}</div><div class="match-middle" aria-hidden="true"></div><div class="match-right">${esc(right[i]||'')}</div>`).join('')}</div>`;}
+    if(b.type==='flow'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="flow-items inline-edit" contenteditable="plaintext-only" data-inline-prop="content">${items.map((x,i)=>`${i?'<span class="flow-arrow" aria-hidden="true">→</span>':''}<div class="flow-step">${esc(x)}</div>`).join('')}</div>`;}
+    if(b.type==='wordbank'){const items=String(b.content||'').split(/[、,，\r\n]/).map(x=>x.trim()).filter(Boolean);body=`<div class="wordbank-box"><strong>ヒント・使える言葉</strong><div class="inline-edit" contenteditable="plaintext-only" data-inline-prop="content">${items.map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>`;}
+    if(b.type==='bubble') body=`<div class="speech-card"><strong class="inline-edit" contenteditable="plaintext-only" data-inline-prop="label">${esc(b.label||'考え')}</strong><div class="inline-edit" contenteditable="plaintext-only" data-inline-prop="content">${nl(b.content)}</div></div>`;
+    if(b.type==='rubric'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<table class="rubric-table"><thead><tr><th>ふり返ること</th><th>できた</th><th>もう少し</th></tr></thead><tbody>${items.map((x,i)=>`<tr><td contenteditable="plaintext-only" data-inline-list-prop="content" data-inline-list-index="${i}">${esc(x)}</td><td>○</td><td>○</td></tr>`).join('')}</tbody></table>`;}
+    if(b.type==='sequence'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="sequence-items">${items.map((x,i)=>`<div class="sequence-card"><span>${i+1}</span><div contenteditable="plaintext-only" data-inline-list-prop="content" data-inline-list-index="${i}">${esc(x.replace(/^\d+[.、．]?\s*/,''))}</div></div>`).join('')}</div>`;}
+    if(b.type==='match'){const left=String(b.leftItems||'').split(/\r?\n/).filter(x=>x.trim()),right=String(b.rightItems||'').split(/\r?\n/).filter(x=>x.trim()),rows=Math.max(left.length,right.length);body=`<div class="match-grid">${Array.from({length:rows},(_,i)=>`<div class="match-left" contenteditable="plaintext-only" data-inline-list-prop="leftItems" data-inline-list-index="${i}">${esc(left[i]||'')}</div><div class="match-middle" aria-hidden="true"></div><div class="match-right" contenteditable="plaintext-only" data-inline-list-prop="rightItems" data-inline-list-index="${i}">${esc(right[i]||'')}</div>`).join('')}</div>`;}
     return `<section class="${blockClasses(b)}" style="${style}" data-id="${b.id}">${actionBar()}${body}</section>`;
   }
 
