@@ -292,12 +292,12 @@
   function estimateHeight(b){
     const chars=String(b.content||'').length, width=Math.max(.25,(Number(b.width)||100)/100), writing=resolvedWriting(b);
     if(['ruled','calc','grid','image','navi','reflection','answerline','compare'].includes(b.type)) return Math.max(6,Number(b.height)||30);
-    if(b.type==='checklist')return Math.max(12,String(b.content||'').split(/\\r?\\n/).filter(x=>x.trim()).length*8+2);
-    if(b.type==='flow')return Math.max(18,String(b.content||'').split(/\\r?\\n/).filter(x=>x.trim()).length*12+2);
+    if(b.type==='checklist')return Math.max(12,String(b.content||'').split(/\r?\n/).filter(x=>x.trim()).length*8+2);
+    if(b.type==='flow')return Math.max(18,String(b.content||'').split(/\r?\n/).filter(x=>x.trim()).length*12+2);
     if(b.type==='wordbank')return 18;
     if(b.type==='bubble')return Math.max(20,Math.ceil(chars/50)*7+12);
-    if(b.type==='rubric')return Math.max(18,String(b.content||'').split(/\\r?\\n/).filter(x=>x.trim()).length*10+8);
-    if(b.type==='sequence')return Math.max(16,String(b.content||'').split(/\\r?\\n/).filter(x=>x.trim()).length*15+2);
+    if(b.type==='rubric')return Math.max(18,String(b.content||'').split(/\r?\n/).filter(x=>x.trim()).length*10+8);
+    if(b.type==='sequence')return Math.max(16,String(b.content||'').split(/\r?\n/).filter(x=>x.trim()).length*15+2);
     if(b.type==='table')return Math.max(1,Number(b.rows)||3)*10+4;
     if(b.type==='kanji'){const rows=Math.max(1,Number(b.rows)||2),size={small:10,medium:12,large:16}[b.cellSize]||14;return rows*size+(rows-1)*.6+3;}
     if(b.type==='choice')return Math.max(22,12+Math.ceil(chars/(55*width))*7+Math.ceil((b.choices||[]).length/2)*8);
@@ -334,13 +334,13 @@
     if(b.type==='image'||b.type==='navi') body=b.imageUrl?`<img src="${esc(b.imageUrl)}" alt="${b.type==='navi'?'学習イラスト':'挿入画像'}">`:'<div class="placeholder-image">画像を選んでください</div>';
     if(b.type==='reflection') { const gap=Math.max(3,Number(b.lineGap)||8), count=Math.max(1,Math.floor(Math.max(8,(Number(b.height)||30)-10)/gap)); body=`<div class="reflection-heading">ふりかえり</div><div class="reflection-label inline-edit" contenteditable="plaintext-only" data-inline-prop="content">${nl(b.content)}</div><div class="ruled-area ${b.lines===false?'no-lines':''}" style="--line-gap:${gap}mm">${b.lines===false?'':Array.from({length:count},()=>'<span class="ruled-line" aria-hidden="true"></span>').join('')}</div>`; }
     if(b.type==='score') body=`<div class="score-line">${esc(b.content||'得点')}　　／ ${Number(b.total)||100} 点</div>`;
-    if(b.type==='checklist'){const items=String(b.content||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="checklist-items">${items.map(x=>`<div class="checklist-item"><span class="check-box" aria-hidden="true"></span><span>${esc(x)}</span></div>`).join('')}</div>`;}
+    if(b.type==='checklist'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="checklist-items">${items.map(x=>`<div class="checklist-item"><span class="check-box" aria-hidden="true"></span><span>${esc(x)}</span></div>`).join('')}</div>`;}
     if(b.type==='compare') body=`<div class="compare-grid" style="--compare-height:${Math.max(12,Number(b.height)||42}mm"><section><h4>${esc(b.leftTitle||'前の考え')}</h4><div>${nl(b.leftContent||'')}</div></section><section><h4>${esc(b.rightTitle||'今の考え')}</h4><div>${nl(b.rightContent||'')}</div></section></div>`;
-    if(b.type==='flow'){const items=String(b.content||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="flow-items">${items.map((x,i)=>`${i?'<span class="flow-arrow" aria-hidden="true">→</span>':''}<div class="flow-step">${esc(x)}</div>`).join('')}</div>`;}
+    if(b.type==='flow'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="flow-items">${items.map((x,i)=>`${i?'<span class="flow-arrow" aria-hidden="true">→</span>':''}<div class="flow-step">${esc(x)}</div>`).join('')}</div>`;}
     if(b.type==='wordbank'){const items=String(b.content||'').split(/[、,，\\n]/).map(x=>x.trim()).filter(Boolean);body=`<div class="wordbank-box"><strong>ヒント・使える言葉</strong><div>${items.map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>`;}
     if(b.type==='bubble') body=`<div class="speech-card"><strong>${esc(b.label||'考え')}</strong><div>${nl(b.content)}</div></div>`;
-    if(b.type==='rubric'){const items=String(b.content||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);body=`<table class="rubric-table"><thead><tr><th>ふり返ること</th><th>できた</th><th>もう少し</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x)}</td><td>○</td><td>○</td></tr>`).join('')}</tbody></table>`;}
-    if(b.type==='sequence'){const items=String(b.content||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="sequence-items">${items.map((x,i)=>`<div class="sequence-card"><span>${i+1}</span><div>${esc(x.replace(/^\\d+[.、．]?\\s*/,''))}</div></div>`).join('')}</div>`;}
+    if(b.type==='rubric'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<table class="rubric-table"><thead><tr><th>ふり返ること</th><th>できた</th><th>もう少し</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x)}</td><td>○</td><td>○</td></tr>`).join('')}</tbody></table>`;}
+    if(b.type==='sequence'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="sequence-items">${items.map((x,i)=>`<div class="sequence-card"><span>${i+1}</span><div>${esc(x.replace(/^\\d+[.、．]?\\s*/,''))}</div></div>`).join('')}</div>`;}
     return `<section class="${blockClasses(b)}" style="${style}" data-id="${b.id}">${actionBar()}${body}</section>`;
   }
 
