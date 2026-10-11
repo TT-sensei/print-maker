@@ -120,7 +120,7 @@
     $('#settingsContent').addEventListener('change', handleSettingsChange);
     document.addEventListener('keydown', e => {
       const mod=e.ctrlKey||e.metaKey, key=e.key.toLowerCase();
-      const editing=!!e.target.closest('input,textarea,select,[contenteditable="true"]');
+      const editing=!!e.target.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]');
       // Let the browser handle text-level undo/redo while the user is typing.
       if(mod&&editing&&(key==='z'||key==='y'))return;
       if (mod && key==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
@@ -197,7 +197,7 @@
     const action=e.target.closest('[data-action]');
     if(action && block){ e.stopPropagation(); blockAction(block.dataset.id,action.dataset.action); return; }
     if(block && !$('#previewOverlay').contains(block)){
-      const inlineTarget=e.target.closest('[data-inline-prop],[data-table-cell]');
+      const inlineTarget=e.target.closest('[data-inline-prop],[data-inline-list-prop],[data-table-cell]');
       if(selectedId!==block.dataset.id){selectedId=block.dataset.id;$('#pages').querySelectorAll('.block').forEach(x=>x.classList.toggle('selected',x.dataset.id===selectedId));renderSettings();}
       if(!inlineTarget)switchMobilePanel('settings');
       return;
