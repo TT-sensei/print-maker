@@ -93,9 +93,13 @@
     $('#settingsContent').addEventListener('input', handleSettingsInput);
     $('#settingsContent').addEventListener('change', handleSettingsChange);
     document.addEventListener('keydown', e => {
-      if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
-      if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); }
-      if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); openSaveDialog(); }
+      const mod=e.ctrlKey||e.metaKey, key=e.key.toLowerCase();
+      const editing=!!e.target.closest('input,textarea,select,[contenteditable="true"]');
+      // Let the browser handle text-level undo/redo while the user is typing.
+      if(mod&&editing&&(key==='z'||key==='y'))return;
+      if (mod && key==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
+      if (mod && key==='y'){ e.preventDefault(); redo(); }
+      if (mod && key==='s'){ e.preventDefault(); openSaveDialog(); }
     });
     document.addEventListener('focusin', e => {
       const cell=e.target.closest('[data-table-cell]');
@@ -115,8 +119,11 @@
       const field=$(`#settingsContent [data-prop="${inline.dataset.inlineProp}"]`);if(field&&selectedId===b.id)field.value=b[inline.dataset.inlineProp];
     });
     document.addEventListener('focusout', e => {
-      const inline=e.target.closest('[data-inline-prop]'),cell=e.target.closest('[data-table-cell]');
-      if((inline||cell)&&!$('#previewOverlay').contains(e.target))setTimeout(()=>{if(!e.target.isConnected)return;renderWorkspace();},0);
+      if($('#previewOverlay').contains(e.target))return;
+      // Reset edit-session markers without rebuilding the workspace: rebuilding here
+      // can steal focus when moving between table cells or inline-editable blocks.
+      const editable=e.target.closest('[data-inline-prop],[data-table-cell],[data-prop],[data-choice],[data-cell]');
+      if(editable)delete editable.dataset.started;
     },true);
     $('#modalBody').addEventListener('change', e => { if(e.target.id==='importJsonFile'&&e.target.files[0])importWorksheetJson(e.target.files[0]); });
     window.addEventListener('afterprint',()=>document.body.classList.remove('print-landscape'));
@@ -310,7 +317,7 @@
 
   function addBlock(type){ if(!worksheet)return;commit();const b=makeBlock(type);worksheet.blocks.push(b);selectedId=b.id;changed();setTimeout(()=>document.querySelector(`[data-id="${b.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}),30); }
   function addSet(set){commit();const lists={written:[['question',{}],['ruled',{height:40}]],math:[['question',{}],['calc',{height:38}],['answerline',{height:9}]],reflection:[['reflection',{content:'わかったこと',height:30}],['reflection',{content:'次にがんばること',height:24}]]};const made=(lists[set]||[]).map(([t,o])=>makeBlock(t,o));worksheet.blocks.push(...made);selectedId=made[0]?.id;changed();}
-  function blockAction(id,action){const i=worksheet.blocks.findIndex(b=>b.id===id);if(i<0)return;commit();if(action==='up'&&i>0)[worksheet.blocks[i-1],worksheet.blocks[i]]=[worksheet.blocks[i],worksheet.blocks[i-1]];if(action==='down'&&i<worksheet.blocks.length-1)[worksheet.blocks[i+1],worksheet.blocks[i]]=[worksheet.blocks[i],worksheet.blocks[i+1]];if(action==='duplicate'){const c=clone(worksheet.blocks[i]);c.id=uid();worksheet.blocks.splice(i+1,0,c);selectedId=c.id;}if(action==='delete'){worksheet.blocks.splice(i,1);selectedId=worksheet.blocks[Math.min(i,worksheet.blocks.length-1)]?.id||null;}changed();}
+  function blockAction(id,action){const i=worksheet.blocks.findIndex(b=>b.id===id);if(i<0)return;if((action==='up'&&i===0)||(action==='down'&&i===worksheet.blocks.length-1))return;commit();if(action==='up')[worksheet.blocks[i-1],worksheet.blocks[i]]=[worksheet.blocks[i],worksheet.blocks[i-1]];if(action==='down')[worksheet.blocks[i+1],worksheet.blocks[i]]=[worksheet.blocks[i],worksheet.blocks[i+1]];if(action==='duplicate'){const c=clone(worksheet.blocks[i]);c.id=uid();worksheet.blocks.splice(i+1,0,c);selectedId=c.id;}if(action==='delete'){worksheet.blocks.splice(i,1);selectedId=worksheet.blocks[Math.min(i,worksheet.blocks.length-1)]?.id||null;}changed();}
 
   function renderSettings(){
     const root=$('#settingsContent'),b=getSelected(); if(!b){root.innerHTML=$('#emptySettings').innerHTML;return;}
