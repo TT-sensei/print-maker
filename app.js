@@ -386,7 +386,63 @@
   function openDataDialog(){openModal('データの入出力','バックアップ・AIとの受け渡し',`<div class="data-cards"><section><b>JSONを書き出す</b><p>現在のプリントを、画像や設定を含めて1つのファイルに保存します。バックアップや、AIへ渡して編集するときに使えます。</p><button id="exportDataAction" class="data-action">JSONを書き出す</button></section><section><b>JSONを読み込む</b><p>プリント工房から書き出したデータや、同じ形式でAIが作成したデータを読み込みます。現在の作業は自動保存に残ります。</p><label class="data-action file-action">JSONを選ぶ<input id="importJsonFile" type="file" accept="application/json,.json"></label></section></div><p class="data-tip">AIには「このJSONの構造を保ったまま、問題文やパーツ構成を変更してください」と伝えると安定します。</p>`);}
   function exportWorksheetJson(){const payload={format:'print-kobo',version:1,exportedAt:new Date().toISOString(),worksheet:clone(worksheet)},blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`${safeFileName(worksheet.name||worksheet.title||'print')}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('JSONを書き出しました');}
   function importWorksheetJson(file){if(file.size>12*1024*1024){toast('JSONファイルが大きすぎます');return;}const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result),w=normalizeWorksheetData(parsed);closeModal();openEditor(w);toast('JSONからプリントを作りました');}catch{toast('プリント工房のJSONとして読み込めませんでした');}};reader.onerror=()=>toast('ファイルを読み込めませんでした');reader.readAsText(file);}
-  function normalizeWorksheetData(raw){const src=raw?.worksheet||raw;if(!src||!Array.isArray(src.blocks))throw new Error('format');const valid=new Set(PARTS.map(x=>x[0])),base=newWorksheet(src.subject||'other',src.writingMode||'horizontal'),now=new Date().toISOString(),w={...base,...src,id:uid(),createdAt:now,updatedAt:now};w.blocks=src.blocks.filter(b=>b&&valid.has(b.type)).slice(0,200).map(b=>makeBlock(b.type,{...b,id:uid()}));if(!w.blocks.length&&src.blocks.length)throw new Error('blocks');return w;}
+  function normalizeWorksheetData(raw){
+    const src=raw?.worksheet||raw;
+    if(!src||!Array.isArray(src.blocks))throw new Error('format');
+    const valid=new Set(PARTS.map(x=>x[0]));
+    const pick=(value,allowed,fallback)=>allowed.includes(value)?value:fallback;
+    const bounded=(value,min,max,fallback)=>{const n=Number(value);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;};
+    const shortText=(value,max=2000)=>String(value??'').slice(0,max);
+    const now=new Date().toISOString();
+    const base=newWorksheet(pick(src.subject,Object.keys(SUBJECTS),'other'),pick(src.writingMode,['horizontal','vertical'],'horizontal'));
+    const w={...base,...src,id:uid(),createdAt:now,updatedAt:now};
+    w.name=shortText(src.name||src.title||'無題のプリント',120);
+    w.title=shortText(src.title||'学習プリント',120);
+    w.subtitle=shortText(src.subtitle,240);
+    w.subject=pick(src.subject,Object.keys(SUBJECTS),'other');
+    w.paperSize='A4';
+    w.orientation=pick(src.orientation,['portrait','landscape'],'portrait');
+    w.writingMode=pick(src.writingMode,['horizontal','vertical'],'horizontal');
+    w.margin=pick(src.margin,['narrow','standard','wide'],'standard');
+    w.fontSize=pick(src.fontSize,['small','standard','large'],'standard');
+    w.lineHeight=pick(src.lineHeight,['narrow','standard','wide'],'standard');
+    w.grade=shortText(src.grade,20);w.className=shortText(src.className,20);
+    w.date=/^\d{4}-\d{2}-\d{2}$/.test(String(src.date||''))?src.date:'';
+    for(const key of ['showGrade','showClass','showName','showDate'])w[key]=src[key]===true;
+    const input=src.blocks.slice(0,200);
+    w.blocks=input.filter(b=>b&&valid.has(b.type)).map(source=>{
+      const b=makeBlock(source.type,{...source,id:uid()});
+      b.content=shortText(b.content,10000);
+      b.width=bounded(b.width,25,100,100);
+      b.height=bounded(b.height,6,150,30);
+      b.alignment=pick(b.alignment,['left','center','right'],'left');
+      b.writingMode=pick(b.writingMode,['auto','horizontal','vertical'],'auto');
+      b.lineHeight=bounded(b.lineHeight,.8,3,1.65);
+      b.fontSize=bounded(b.fontSize,6,48,10.5);
+      b.lineGap=bounded(b.lineGap,4,20,8);
+      if('answer' in b)b.answer=shortText(b.answer,3000);
+      if('sample' in b)b.sample=shortText(b.sample,200);
+      if('rows' in b)b.rows=bounded(b.rows,1,b.type==='kanji'?8:10,b.type==='kanji'?2:3);
+      if('cols' in b)b.cols=bounded(b.cols,1,b.type==='kanji'?16:8,b.type==='kanji'?8:3);
+      if(b.type==='table'){
+        b.cells=Array.from({length:b.rows*b.cols},(_,i)=>shortText(Array.isArray(source.cells)?source.cells[i]:'',500));
+      }
+      if(b.type==='kanji')b.cellSize=pick(b.cellSize,['small','medium','large'],'medium');
+      if(b.type==='calc')b.pattern=pick(b.pattern,['blank','lines','grid'],'blank');
+      if(b.type==='choice'){
+        b.marker=pick(b.marker,['kana','number','alpha'],'kana');
+        b.choices=(Array.isArray(source.choices)?source.choices:[]).slice(0,6).map(v=>shortText(v,300));
+        while(b.choices.length<2)b.choices.push('');
+      }
+      if(b.type==='image'||b.type==='navi'){
+        const url=String(b.imageUrl||'');
+        b.imageUrl=url.length<=6*1024*1024&&(url.startsWith('data:image/')||url.startsWith('https://'))?url:'';
+      }
+      return b;
+    });
+    if(!w.blocks.length&&src.blocks.length)throw new Error('blocks');
+    return w;
+  }
   function safeFileName(name){return String(name).replace(/[\\/:*?"<>|]/g,'_').slice(0,60)||'print';}
 
   function openPaperSettings(){openModal('用紙と基本情報','プリント全体の設定',`<div class="inline-fields">${selectField('教科','paperSubject',worksheet.subject,Object.entries(SUBJECTS).map(([v,x])=>[v,x.label]))}${selectField('用紙の向き','paperOrientation',worksheet.orientation,[['portrait','A4縦'],['landscape','A4横']])}${selectField('文字方向','paperWriting',worksheet.writingMode,[['horizontal','横書き'],['vertical','縦書き']])}${selectField('余白','paperMargin',worksheet.margin,[['narrow','狭い'],['standard','標準'],['wide','広い']])}${selectField('基本文字','paperFont',worksheet.fontSize,[['small','小'],['standard','標準'],['large','大']])}${selectField('行間','paperLine',worksheet.lineHeight,[['narrow','狭い'],['standard','標準'],['wide','広い']])}</div><hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><div class="inline-fields">${plainField('タイトル','paperTitle',worksheet.title)}${plainField('サブタイトル','paperSubtitle',worksheet.subtitle)}${plainField('学年','paperGrade',worksheet.grade)}${plainField('組','paperClass',worksheet.className)}${plainField('日付','paperDate',worksheet.date,'date')}</div><div class="field"><span>表示する欄</span><div class="segmented checks"><label><input id="showGrade" type="checkbox" ${worksheet.showGrade?'checked':''}> 学年</label><label><input id="showClass" type="checkbox" ${worksheet.showClass?'checked':''}> 組</label><label><input id="showName" type="checkbox" ${worksheet.showName?'checked':''}> 名前</label><label><input id="showDate" type="checkbox" ${worksheet.showDate?'checked':''}> 日付</label></div></div><div class="form-actions"><button id="applyPaperSettings" class="accent">設定を反映</button></div>`);}
