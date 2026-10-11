@@ -56,3 +56,36 @@
   .goal-label{background:transparent!important;color:var(--subject)!important;border:var(--worksheet-rule-width,.3mm) solid var(--subject)}
   .block-heading.has-bg .content{background:transparent!important}
 }
+
+
+/* Additional reusable classroom parts */
+.field-help{font-size:11px;color:var(--muted);line-height:1.5;margin:8px 0}
+.block-checklist .checklist-items{display:grid;gap:2mm;padding:1mm 0}
+.block-checklist .checklist-item{display:flex;align-items:flex-start;gap:2.5mm;min-height:6mm;line-height:1.5;font-size:11pt}
+.block-checklist .check-box{width:4.2mm;height:4.2mm;flex:0 0 4.2mm;border:.4mm solid #444;margin-top:.6mm}
+.block-compare .compare-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3mm;min-height:var(--compare-height,42mm)}
+.block-compare .compare-grid section{min-width:0;border:.35mm solid var(--worksheet-rule-color,#777);display:flex;flex-direction:column}
+.block-compare .compare-grid h4{font-size:10.5pt;margin:0;padding:2mm;background:#f1f3f2;border-bottom:.35mm solid var(--worksheet-rule-color,#777);overflow-wrap:anywhere}
+.block-compare .compare-grid section>div{padding:2mm;flex:1;min-height:18mm;overflow-wrap:anywhere}
+.block-flow .flow-items{display:flex;align-items:stretch;justify-content:center;gap:1.5mm;flex-wrap:wrap;padding:1mm 0}
+.block-flow .flow-step{display:flex;align-items:center;justify-content:center;text-align:center;flex:1 1 22mm;min-width:18mm;min-height:14mm;padding:2mm;border:.4mm solid var(--subject);border-radius:2mm;background:color-mix(in srgb,var(--subject) 6%,white);font-size:10pt;overflow-wrap:anywhere}
+.block-flow .flow-arrow{align-self:center;font-weight:700;color:var(--subject);font-size:14pt}
+.block-wordbank .wordbank-box{border:.4mm solid var(--worksheet-rule-color,#777);padding:2mm 3mm;background:#fafafa}
+.block-wordbank .wordbank-box strong{display:block;font-size:9pt;margin-bottom:1.5mm}
+.block-wordbank .wordbank-box>div{display:flex;flex-wrap:wrap;gap:1.5mm 2mm}
+.block-wordbank .wordbank-box span{border:.25mm solid #aab2ae;border-radius:1mm;padding:.7mm 1.8mm;font-size:10pt;background:white}
+.block-bubble .speech-card{position:relative;border:.5mm solid var(--subject);border-radius:4mm;padding:2.5mm 3mm;background:color-mix(in srgb,var(--subject) 5%,white);min-height:18mm;overflow-wrap:anywhere}
+.block-bubble .speech-card:before{content:"";position:absolute;left:7mm;bottom:-3mm;width:5mm;height:5mm;background:white;border-left:.5mm solid var(--subject);border-bottom:.5mm solid var(--subject);transform:skewY(-35deg) rotate(-12deg)}
+.block-bubble .speech-card strong{display:block;font-size:9pt;color:var(--subject);margin-bottom:1mm}
+.block-bubble .speech-card>div{font-size:11pt;line-height:1.55}
+.block-rubric .rubric-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.block-rubric .rubric-table th,.block-rubric .rubric-table td{border:.35mm solid var(--worksheet-rule-color,#777);padding:1.5mm;font-size:9.5pt;text-align:center;overflow-wrap:anywhere}
+.block-rubric .rubric-table th:first-child,.block-rubric .rubric-table td:first-child{text-align:left;width:58%}
+.block-rubric .rubric-table th{background:#f1f3f2;font-weight:700}
+.block-sequence .sequence-items{display:grid;gap:2mm}
+.block-sequence .sequence-card{display:flex;align-items:center;gap:2.5mm;border:.35mm solid var(--worksheet-rule-color,#777);padding:2mm 2.5mm;min-height:10mm;overflow-wrap:anywhere}
+.block-sequence .sequence-card>span{display:grid;place-items:center;flex:0 0 7mm;height:7mm;border-radius:50%;background:var(--subject);color:white;font-weight:700;font-size:9pt}
+.block-sequence .sequence-card>div{font-size:10.5pt;line-height:1.45}
+@media print{
+  .block-compare .compare-grid h4,.block-wordbank .wordbank-box,.block-flow .flow-step,.block-bubble .speech-card,.block-rubric .rubric-table th{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
