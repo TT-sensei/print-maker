@@ -152,7 +152,7 @@
     document.addEventListener('input', e => {
       const title=e.target.closest('[data-worksheet-prop]');
       if(title && !$('#previewOverlay').contains(title)){
-        worksheet[title.dataset.worksheetProp]=title.innerText.replace(/\\u00a0/g,' ').trim();
+        worksheet[title.dataset.worksheetProp]=title.innerText.replace(/\u00a0/g,' ').trim();
         worksheet.updatedAt=new Date().toISOString();scheduleSave();
         $('#documentName').textContent=worksheet.name||worksheet.title||'無題のプリント';
         return;
