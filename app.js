@@ -108,10 +108,41 @@
 
   function init() {
     renderParts();
+    renderStartGallery();
     const draft = read(STORAGE.draft,null);
     $('#draftInfo').textContent = draft ? `${draft.name || draft.title}（${formatDate(draft.updatedAt)}）` : 'まだ自動保存はありません';
     bindEvents();
     if (location.hash === '#edit' && draft) openEditor(draft);
+  }
+
+  function startThumbnail(p) {
+    const line=(w='80%')=>`<i class="mini-line" style="width:${w}"></i>`;
+    const ruled=(n=3)=>`<div class="mini-ruled">${Array.from({length:n},()=>'<i></i>').join('')}</div>`;
+    const section=(label,n=1)=>`<div class="mini-section"><b>${esc(label)}</b>${Array.from({length:n},(_,i)=>line(i%2?'72%':'92%')).join('')}</div>`;
+    let body='';
+    if(p.id==='blank') body=`<div class="mini-open-space"></div>${line('65%')}`;
+    else if(p.id==='math') body=`<div class="mini-goal"></div><div class="mini-question">① ${line('68%')}</div><div class="mini-work"></div><div class="mini-question">② ${line('74%')}</div><div class="mini-work"></div>`;
+    else if(p.id==='kanji') body=`${section('漢字練習')}<div class="mini-kanji-grid">${'<i></i>'.repeat(22)}</div>${section('ミニテスト')}<div class="mini-kanji-grid">${'<i></i>'.repeat(11)}</div>`;
+    else if(['science','experiment'].includes(p.id)) body=`<div class="mini-goal"></div>${section('予想',2)}${section('方法・観察',2)}<div class="mini-drawing"></div>${section('結果・考察',2)}`;
+    else if(['reflection','exit','freeprogress'].includes(p.id)) body=`<div class="mini-goal"></div>${section('できたこと')}${ruled(2)}${section('分かったこと')}${ruled(2)}${section('次の目標')}`;
+    else if(['matching','match'].includes(p.id)) body=`<div class="mini-match"><div>${line('90%')}${line('75%')}${line('82%')}</div><div class="mini-dotted"></div><div>${line('90%')}${line('70%')}${line('80%')}</div></div>${ruled(2)}`;
+    else if(['discussion','peerreview'].includes(p.id)) body=`<div class="mini-goal"></div>${section('自分の考え',2)}<div class="mini-bubble"></div>${section('友達の考え',2)}`;
+    else if(['data','social'].includes(p.id)) body=`<div class="mini-image"></div><div class="mini-table">${'<i></i>'.repeat(9)}</div>${section('資料から分かること',2)}${ruled(2)}`;
+    else if(p.id==='compare') body=`<div class="mini-goal"></div><div class="mini-two-box"><i>予想</i><i>結果</i></div>${section('気付いたこと',2)}${ruled(2)}`;
+    else if(p.id==='test') body=`<div class="mini-score"></div>${[1,2,3,4].map(n=>`<div class="mini-question">${n}. ${line('70%')}</div>${line('92%')}`).join('')}`;
+    else if(['opinion','reading','japanese','vertical'].includes(p.id)) body=`<div class="mini-goal"></div>${section(p.id==='opinion'?'自分の主張':'本文・資料',3)}${section('問題',1)}${ruled(4)}`;
+    else if(['timeline','sequence','presentation'].includes(p.id)) body=`<div class="mini-goal"></div><div class="mini-steps"><i>1</i><i>2</i><i>3</i></div>${section('順序・伝えたいこと',2)}${ruled(2)}`;
+    else if(['homework','support'].includes(p.id)) body=`<div class="mini-goal"></div><div class="mini-checks">${'<i></i>'.repeat(4)}</div>${section('今日の課題',2)}<div class="mini-work"></div>${ruled(2)}`;
+    else if(p.id==='unitreview') body=`<div class="mini-goal"></div>${section('大切な言葉',2)}${section('説明・計算',2)}<div class="mini-rating">${'<i>☆</i>'.repeat(3)}</div>`;
+    else if(p.id==='choice') body=`<div class="mini-goal"></div>${[1,2,3].map(n=>`<div class="mini-question">${n}. ${line('65%')}</div><div class="mini-options"><i></i><i></i><i></i><i></i></div>`).join('')}`;
+    else body=`<div class="mini-goal"></div>${section(p.name,2)}${ruled(3)}${section('まとめ')}`;
+    return `<div class="mini-paper"><div class="mini-paper-title"></div><div class="mini-paper-meta"></div>${body}</div>`;
+  }
+
+  function renderStartGallery() {
+    const grid=$('#startTemplateGrid');
+    if(!grid)return;
+    grid.innerHTML=PRESETS.map(p=>`<button class="start-template-card" data-preset="${esc(p.id)}" aria-label="${esc(p.name)}のひな形を選ぶ"><span class="start-template-preview">${startThumbnail(p)}</span><span class="start-template-info"><b>${esc(p.name)}</b><small>${esc(p.desc)}</small></span><span class="start-template-arrow" aria-hidden="true">↗</span></button>`).join('');
   }
 
   function bindEvents() {
