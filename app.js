@@ -10,7 +10,7 @@
     ['heading','見出し','▰'],['text','説明','☰'],['goal','めあて','◎'],['question','問題','?'],['answerline','一行解答','＿'],
     ['ruled','記述','≡'],['calc','計算','＋'],['grid','方眼','▦'],['kanji','漢字練習マス','あ'],['choice','選択問題','☑'],['table','表','▤'],['image','画像','▧'],
     ['navi','NAVI','☺'],['summary','まとめ','✓'],['reflection','ふりかえり','↗'],['score','得点欄','点'],
-    ['checklist','チェックリスト','☑'],['compare','比較欄','⇄'],['flow','思考の流れ','→'],['wordbank','語群・ヒント','▤'],['bubble','吹き出し','❞'],['rubric','自己評価','☆'],['sequence','順序カード','①']
+    ['checklist','チェックリスト','☑'],['compare','比較欄','⇄'],['flow','思考の流れ','→'],['wordbank','語群・ヒント','▤'],['bubble','吹き出し','❞'],['rubric','自己評価','☆'],['sequence','順序カード','①'],['match','線で結ぶ','↔']
   ];
   const NAVI_BASE = 'https://tt-sensei.github.io/navi-character-/assets/web/groups/learning/';
   const NAVI = [
@@ -70,7 +70,8 @@
       wordbank:{content:'理由、例えば、つまり',width:100},
       bubble:{content:'ここに考えや発言を書きます。',label:'友達の考え',width:66},
       rubric:{content:'自分の考えをもてた\n理由を説明できた\n友達の考えと比べた',width:100},
-      sequence:{content:'① 準備する\n② 取り組む\n③ 振り返る',width:100}
+      sequence:{content:'① 準備する\n② 取り組む\n③ 振り返る',width:100},
+      match:{content:'',leftItems:'言葉1\n言葉2\n言葉3',rightItems:'意味1\n意味2\n意味3',width:100}
     };
     return { id:uid(), type, ...clone(defaults[type]), ...overrides };
   }
@@ -300,6 +301,7 @@
     if(b.type==='bubble')return Math.max(20,Math.ceil(chars/50)*7+12);
     if(b.type==='rubric')return Math.max(18,String(b.content||'').split(/\r?\n/).filter(x=>x.trim()).length*10+8);
     if(b.type==='sequence')return Math.max(16,String(b.content||'').split(/\r?\n/).filter(x=>x.trim()).length*15+2);
+    if(b.type==='match')return Math.max(20,Math.max(String(b.leftItems||'').split(/\r?\n/).length,String(b.rightItems||'').split(/\r?\n/).length)*9+4);
     if(b.type==='table')return Math.max(1,Number(b.rows)||3)*10+4;
     if(b.type==='kanji'){const rows=Math.max(1,Number(b.rows)||2),size={small:10,medium:12,large:16}[b.cellSize]||14;return rows*size+(rows-1)*.6+3;}
     if(b.type==='choice')return Math.max(22,12+Math.ceil(chars/(55*width))*7+Math.ceil((b.choices||[]).length/2)*8);
@@ -343,6 +345,7 @@
     if(b.type==='bubble') body=`<div class="speech-card"><strong>${esc(b.label||'考え')}</strong><div>${nl(b.content)}</div></div>`;
     if(b.type==='rubric'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<table class="rubric-table"><thead><tr><th>ふり返ること</th><th>できた</th><th>もう少し</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x)}</td><td>○</td><td>○</td></tr>`).join('')}</tbody></table>`;}
     if(b.type==='sequence'){const items=String(b.content||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="sequence-items">${items.map((x,i)=>`<div class="sequence-card"><span>${i+1}</span><div>${esc(x.replace(/^\d+[.、．]?\s*/,''))}</div></div>`).join('')}</div>`;}
+    if(b.type==='match'){const left=String(b.leftItems||'').split(/\r?\n/).filter(x=>x.trim()),right=String(b.rightItems||'').split(/\r?\n/).filter(x=>x.trim()),rows=Math.max(left.length,right.length);body=`<div class="match-grid">${Array.from({length:rows},(_,i)=>`<div class="match-left">${esc(left[i]||'')}</div><div class="match-middle" aria-hidden="true"></div><div class="match-right">${esc(right[i]||'')}</div>`).join('')}</div>`;}
     return `<section class="${blockClasses(b)}" style="${style}" data-id="${b.id}">${actionBar()}${body}</section>`;
   }
 
@@ -358,6 +361,7 @@
     const label=PARTS.find(x=>x[0]===b.type)?.[1]||b.type;
     let html=`<div class="settings-section"><h3>${label}</h3>`;
     if(['heading','text','goal','question','choice','summary','reflection','score','checklist','flow','wordbank','bubble','rubric','sequence'].includes(b.type)) html+=field(b.type==='checklist'?'項目（1行に1つ）':b.type==='flow'?'流れ（1行に1つ）':b.type==='wordbank'?'言葉（読点や改行で区切る）':b.type==='rubric'?'評価項目（1行に1つ）':b.type==='sequence'?'順序（1行に1つ）':b.type==='bubble'?'発言・考え':'文章','content',b.content,'textarea');
+    if(b.type==='match') html+=field('左側の項目（1行に1つ）','leftItems',b.leftItems||'','textarea')+field('右側の項目（1行に1つ）','rightItems',b.rightItems||'','textarea');
     if(b.type==='compare') html+=field('左の見出し','leftTitle',b.leftTitle||'前の考え')+field('左の記入内容','leftContent',b.leftContent||'','textarea')+field('右の見出し','rightTitle',b.rightTitle||'今の考え')+field('右の記入内容','rightContent',b.rightContent||'','textarea');
     if(b.type==='bubble') html+=field('吹き出しの見出し','label',b.label||'考え');
     if(['question','choice'].includes(b.type)) html+=field('解答（先生用に表示）','answer',b.answer||'','textarea');
@@ -503,7 +507,7 @@
       b.lineGap=bounded(b.lineGap,4,20,8);
       if('answer' in b)b.answer=shortText(b.answer,3000);
       if('sample' in b)b.sample=shortText(b.sample,200);
-      for(const key of ['leftTitle','rightTitle','leftContent','rightContent','label'])if(key in b)b[key]=shortText(b[key],2000);
+      for(const key of ['leftTitle','rightTitle','leftContent','rightContent','label','leftItems','rightItems'])if(key in b)b[key]=shortText(b[key],2000);
       for(const key of ['bold','background','frame','numbered','lines'])if(key in b)b[key]=b[key]===true;
       if('rows' in b)b.rows=Math.round(bounded(b.rows,1,b.type==='kanji'?8:10,b.type==='kanji'?2:3));
       if('cols' in b)b.cols=Math.round(bounded(b.cols,1,b.type==='kanji'?16:8,b.type==='kanji'?8:3));
