@@ -99,7 +99,12 @@
       if(mod&&editing&&(key==='z'||key==='y'))return;
       if (mod && key==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
       if (mod && key==='y'){ e.preventDefault(); redo(); }
-      if (mod && key==='s'){ e.preventDefault(); openSaveDialog(); }
+      if (mod && key==='s'){
+        e.preventDefault();
+        // Do not replace a dialog the user is already filling in (for example, its save name).
+        if(!$('#modal').classList.contains('hidden'))return;
+        if(worksheet)openSaveDialog();
+      }
     });
     document.addEventListener('focusin', e => {
       const cell=e.target.closest('[data-table-cell]');
@@ -125,7 +130,13 @@
       const editable=e.target.closest('[data-inline-prop],[data-table-cell],[data-prop],[data-choice],[data-cell]');
       if(editable)delete editable.dataset.started;
     },true);
-    $('#modalBody').addEventListener('change', e => { if(e.target.id==='importJsonFile'&&e.target.files[0])importWorksheetJson(e.target.files[0]); });
+    $('#modalBody').addEventListener('change', e => {
+      if(e.target.id!=='importJsonFile'||!e.target.files[0])return;
+      const file=e.target.files[0];
+      // Allow selecting the same file again after canceling or a failed import.
+      e.target.value='';
+      importWorksheetJson(file);
+    });
     window.addEventListener('afterprint',()=>document.body.classList.remove('print-landscape'));
   }
 
