@@ -299,7 +299,7 @@
   function blockClasses(b){return `block block-${b.type} ${selectedId===b.id?'selected':''} ${resolvedWriting(b)==='vertical'?'writing-vertical vertical-auto':'writing-horizontal'} ${b.background?'has-bg':''} ${b.frame?'has-frame':''}`;}
   function actionBar(){return `<div class="block-actions"><button data-action="up" title="上へ">↑</button><button data-action="down" title="下へ">↓</button><button data-action="duplicate" title="複製">⧉</button><button data-action="delete" title="削除">×</button></div>`;}
   function renderBlock(b,index){
-    const style=`width:calc(${Number(b.width)||100}% - 1.5mm);--block-h:${Number(b.height)||30}mm;--line-gap:${Number(b.lineGap)||8}mm;--align:${b.alignment||'left'};text-align:${b.alignment||'left'}`;
+    const blockWidth=Number(b.width)||100, widthInset=blockWidth<=34?2:1.5;const style=`width:calc(${blockWidth}% - ${widthInset}mm);--block-h:${Number(b.height)||30}mm;--line-gap:${Number(b.lineGap)||8}mm;--align:${b.alignment||'left'};text-align:${b.alignment||'left'}`;
     let body=''; const qNum=b.numbered?`<span class="q-number">${questionNumber(b.id)}.</span>`:'';
     if(b.type==='heading') body=`<div class="content inline-edit" contenteditable="plaintext-only" data-inline-prop="content" style="font-size:${b.fontSize||15}pt;font-weight:${b.bold===false?400:800}">${nl(b.content)}</div>`;
     if(b.type==='text') body=`<div class="content inline-edit" contenteditable="plaintext-only" data-inline-prop="content" style="font-size:${b.fontSize||10.5}pt;line-height:${b.lineHeight||1.65}">${nl(b.content)}</div>`;
