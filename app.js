@@ -190,8 +190,41 @@
     container.classList.toggle('editing',editing);
     container.innerHTML=pages.map((rows,i)=>`<div class="page-wrap"><div class="page-label">${i+1} / ${pages.length}ページ</div><article class="page ${worksheet.orientation} ${worksheet.writingMode==='vertical'?'vertical-root':''}"><div class="page-content">${i===0?renderHeader():''}${rows.map(row=>`<div class="page-row ${row.length===1&&row[0].type==='navi'?`navi-only align-${row[0].alignment||'right'}`:''}">${row.map(renderBlock).join('')}</div>`).join('')}</div></article></div>`).join('');
     if(!editing)container.querySelectorAll('[contenteditable]').forEach(x=>x.contentEditable='false');
-    if(editing)requestAnimationFrame(()=>container.querySelectorAll('.page-wrap').forEach(wrap=>{const content=wrap.querySelector('.page-content'),label=wrap.querySelector('.page-label');if(content.scrollHeight>content.clientHeight+2){label.classList.add('warning');label.textContent+='・内容が多すぎます';}}));
+    requestAnimationFrame(()=>correctRenderedPagination(container,editing));
     $('#pageCount').textContent=`${pages.length}ページ`;
+  }
+
+  function correctRenderedPagination(container,editing){
+    const makePage=()=>{
+      const wrap=document.createElement('div');
+      wrap.className='page-wrap';
+      wrap.innerHTML=`<div class="page-label"></div><article class="page ${worksheet.orientation} ${worksheet.writingMode==='vertical'?'vertical-root':''}"><div class="page-content"></div></article>`;
+      return wrap;
+    };
+    let wraps=[...container.querySelectorAll('.page-wrap')],guard=0;
+    for(let i=0;i<wraps.length&&guard<200;i++){
+      const wrap=wraps[i],content=wrap.querySelector('.page-content');
+      while(content.scrollHeight>content.clientHeight+2&&guard++<200){
+        const rows=[...content.querySelectorAll(':scope > .page-row')],last=rows[rows.length-1];
+        if(!last)break;
+        const header=content.querySelector('.worksheet-header');
+        const headerHeight=header?header.getBoundingClientRect().height+3:0;
+        if(rows.length===1&&last.getBoundingClientRect().height+headerHeight>content.clientHeight+2)break;
+        let next=wraps[i+1];
+        if(!next){next=makePage();wrap.after(next);wraps.splice(i+1,0,next);}
+        const nextContent=next.querySelector('.page-content'),firstRow=nextContent.querySelector(':scope > .page-row');
+        nextContent.insertBefore(last,firstRow);
+      }
+    }
+    wraps=[...container.querySelectorAll('.page-wrap')];
+    wraps.forEach((wrap,i)=>{
+      const label=wrap.querySelector('.page-label'),content=wrap.querySelector('.page-content');
+      label.textContent=`${i+1} / ${wraps.length}ページ`;
+      const overflow=content.scrollHeight>content.clientHeight+2;
+      label.classList.toggle('warning',editing&&overflow);
+      if(editing&&overflow)label.textContent+='・パーツが大きすぎます';
+    });
+    $('#pageCount').textContent=`${wraps.length}ページ`;
   }
 
   function renderHeader(){
@@ -363,7 +396,9 @@
     let style=document.getElementById('printOrientationStyle');
     if(!style){style=document.createElement('style');style.id='printOrientationStyle';document.head.appendChild(style);}
     style.textContent=`@page{size:A4 ${worksheet.orientation==='landscape'?'landscape':'portrait'};margin:0}`;
-    setTimeout(()=>window.print(),50);
+    // Re-render from the current worksheet before printing so the printout uses the latest content.
+    renderPagesInto($('#pages'),false);
+    setTimeout(()=>window.print(),80);
   }
   function setZoom(v){zoom=Math.max(.4,Math.min(1.1,Math.round(v*10)/10));$('#zoomLabel').textContent=Math.round(zoom*100)+'%';document.documentElement.style.setProperty('--zoom',zoom);}
   function switchMobilePanel(name){const map={parts:'#partsPanel',canvas:'#canvasPanel',settings:'#settingsPanel'};$$('.mobile-tabs button').forEach(x=>x.classList.toggle('active',x.dataset.panel===name));$$('.workspace> *').forEach(x=>x.classList.remove('active'));$(map[name])?.classList.add('active');}
