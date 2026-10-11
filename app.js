@@ -205,21 +205,37 @@
 
   function paginate(){
     const pageH=worksheet.orientation==='landscape'?210:297, pad={narrow:9,standard:14,wide:20}[worksheet.margin]||14;
-    const firstCapacity=pageH-pad*2-30, nextCapacity=pageH-pad*2;
+    const titleLines=Math.max(1,Math.ceil(String(worksheet.title||'').length/20));
+    const subtitleLines=worksheet.subtitle?Math.max(1,Math.ceil(String(worksheet.subtitle).length/36)):0;
+    const headerHeight=30+(titleLines-1)*12+Math.max(0,subtitleLines-1)*5;
+    const firstCapacity=pageH-pad*2-headerHeight, nextCapacity=pageH-pad*2;
     const rows=[]; let row=[],used=0;
     worksheet.blocks.forEach((b,i)=>{ const w=Number(b.width)||100; if(row.length && used+w>101){rows.push(row);row=[];used=0;} row.push(b);used+=w;if(used>=99){rows.push(row);row=[];used=0;} if(i===worksheet.blocks.length-1&&row.length)rows.push(row); });
     const pages=[[]]; let pageIndex=0, usedH=0;
-    rows.forEach(row=>{const h=Math.max(...row.map(estimateHeight))+3;const cap=pageIndex===0?firstCapacity:nextCapacity;if(usedH+h>cap&&pages[pageIndex].length){pages.push([]);pageIndex++;usedH=0;}pages[pageIndex].push(row);usedH+=h;});
+    rows.forEach(row=>{
+      const h=Math.max(...row.map(estimateHeight))+3;
+      let cap=pageIndex===0?firstCapacity:nextCapacity;
+      let gap=pages[pageIndex].length?3:0;
+      if(usedH+gap+h>cap&&pages[pageIndex].length){pages.push([]);pageIndex++;usedH=0;cap=nextCapacity;gap=0;}
+      usedH+=gap;
+      pages[pageIndex].push(row);
+      usedH+=h;
+    });
     return pages;
   }
 
   function estimateHeight(b){
-    const chars=String(b.content||'').length, width=(b.width||100)/100, writing=resolvedWriting(b);
-    if(['ruled','calc','grid','image','navi','reflection','answerline'].includes(b.type)) return Number(b.height)||30;
-    if(b.type==='table')return (b.rows||3)*10+4; if(b.type==='kanji'){const size={small:10,medium:14,large:18}[b.cellSize]||14;return (b.rows||2)*size+((b.rows||2)-1)*1.2+3;} if(b.type==='choice')return 22+Math.ceil((b.choices||[]).length/2)*8;
-    if(b.type==='heading')return 12; if(b.type==='goal'||b.type==='summary')return 18; if(b.type==='score')return 14;
-    if(writing==='vertical')return Math.min(90,Math.max(28,Math.ceil(chars/15)*9));
-    return Math.min(80,Math.max(14,Math.ceil(chars/(55*width))*7+7));
+    const chars=String(b.content||'').length, width=Math.max(.25,(Number(b.width)||100)/100), writing=resolvedWriting(b);
+    if(['ruled','calc','grid','image','navi','reflection','answerline'].includes(b.type)) return Math.max(6,Number(b.height)||30);
+    if(b.type==='table')return Math.max(1,Number(b.rows)||3)*10+4;
+    if(b.type==='kanji'){const rows=Math.max(1,Number(b.rows)||2),size={small:10,medium:14,large:18}[b.cellSize]||14;return rows*size+(rows-1)*1.2+3;}
+    if(b.type==='choice')return Math.max(22,12+Math.ceil(chars/(55*width))*7+Math.ceil((b.choices||[]).length/2)*8);
+    if(b.type==='question')return Math.max(14,Math.ceil(chars/(55*width))*7+7+(displayMode==='teacher'&&b.answer?10:0));
+    if(b.type==='heading')return Math.max(12,Math.ceil(chars/(22*width))*9+3);
+    if(b.type==='goal'||b.type==='summary')return Math.max(18,Math.ceil(chars/(45*width))*7+6);
+    if(b.type==='score')return 14;
+    if(writing==='vertical')return Math.max(28,Math.ceil(chars/15)*9);
+    return Math.max(14,Math.ceil(chars/(55*width))*7+7);
   }
 
   function resolvedWriting(b){return b.writingMode==='horizontal'?'horizontal':b.writingMode==='vertical'?'vertical':worksheet.writingMode;}
