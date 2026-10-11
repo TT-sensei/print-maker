@@ -422,8 +422,9 @@
       b.lineGap=bounded(b.lineGap,4,20,8);
       if('answer' in b)b.answer=shortText(b.answer,3000);
       if('sample' in b)b.sample=shortText(b.sample,200);
-      if('rows' in b)b.rows=bounded(b.rows,1,b.type==='kanji'?8:10,b.type==='kanji'?2:3);
-      if('cols' in b)b.cols=bounded(b.cols,1,b.type==='kanji'?16:8,b.type==='kanji'?8:3);
+      for(const key of ['bold','background','frame','numbered','lines'])if(key in b)b[key]=b[key]===true;
+      if('rows' in b)b.rows=Math.round(bounded(b.rows,1,b.type==='kanji'?8:10,b.type==='kanji'?2:3));
+      if('cols' in b)b.cols=Math.round(bounded(b.cols,1,b.type==='kanji'?16:8,b.type==='kanji'?8:3));
       if(b.type==='table'){
         b.cells=Array.from({length:b.rows*b.cols},(_,i)=>shortText(Array.isArray(source.cells)?source.cells[i]:'',500));
       }
@@ -436,7 +437,9 @@
       }
       if(b.type==='image'||b.type==='navi'){
         const url=String(b.imageUrl||'');
-        b.imageUrl=url.length<=6*1024*1024&&(url.startsWith('data:image/')||url.startsWith('https://'))?url:'';
+        const isUploadedImage=b.type==='image'&&url.length<=6*1024*1024&&/^data:image\/(webp|png|jpeg);base64,/i.test(url);
+        const isApprovedNavi=b.type==='navi'&&NAVI.some(item=>url===NAVI_BASE+item[1]);
+        b.imageUrl=isUploadedImage||isApprovedNavi?url:'';
       }
       return b;
     });
