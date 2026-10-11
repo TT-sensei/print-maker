@@ -9,7 +9,8 @@
   const PARTS = [
     ['heading','見出し','▰'],['text','説明','☰'],['goal','めあて','◎'],['question','問題','?'],['answerline','一行解答','＿'],
     ['ruled','記述','≡'],['calc','計算','＋'],['grid','方眼','▦'],['kanji','漢字練習マス','あ'],['choice','選択問題','☑'],['table','表','▤'],['image','画像','▧'],
-    ['navi','NAVI','☺'],['summary','まとめ','✓'],['reflection','ふりかえり','↗'],['score','得点欄','点']
+    ['navi','NAVI','☺'],['summary','まとめ','✓'],['reflection','ふりかえり','↗'],['score','得点欄','点'],
+    ['checklist','チェックリスト','☑'],['compare','比較欄','⇄'],['flow','思考の流れ','→'],['wordbank','語群・ヒント','▤'],['bubble','吹き出し','❞'],['rubric','自己評価','☆'],['sequence','順序カード','①']
   ];
   const NAVI_BASE = 'https://tt-sensei.github.io/navi-character-/assets/web/groups/learning/';
   const NAVI = [
@@ -62,7 +63,14 @@
       navi:{content:'',width:33,height:32,imageUrl:NAVI_BASE+NAVI[0][1],alignment:'right',writingMode:'horizontal'},
       summary:{content:'学習のまとめを書きます。',width:100,alignment:'left',writingMode:'auto'},
       reflection:{content:'わかったこと',width:100,height:24,lines:true,writingMode:'auto'},
-      score:{content:'得点',width:33,total:100,writingMode:'horizontal'}
+      score:{content:'得点',width:33,total:100,writingMode:'horizontal'},
+      checklist:{content:'読む\n考える\n答える',width:100},
+      compare:{content:'',leftTitle:'前の考え',rightTitle:'今の考え',leftContent:'',rightContent:'',width:100,height:42},
+      flow:{content:'気付く\n考える\n伝える',width:100},
+      wordbank:{content:'理由、例えば、つまり',width:100},
+      bubble:{content:'ここに考えや発言を書きます。',label:'友達の考え',width:66},
+      rubric:{content:'自分の考えをもてた\n理由を説明できた\n友達の考えと比べた',width:100},
+      sequence:{content:'① 準備する\n② 取り組む\n③ 振り返る',width:100}
     };
     return { id:uid(), type, ...clone(defaults[type]), ...overrides };
   }
@@ -283,7 +291,13 @@
 
   function estimateHeight(b){
     const chars=String(b.content||'').length, width=Math.max(.25,(Number(b.width)||100)/100), writing=resolvedWriting(b);
-    if(['ruled','calc','grid','image','navi','reflection','answerline'].includes(b.type)) return Math.max(6,Number(b.height)||30);
+    if(['ruled','calc','grid','image','navi','reflection','answerline','compare'].includes(b.type)) return Math.max(6,Number(b.height)||30);
+    if(b.type==='checklist')return Math.max(12,String(b.content||'').split(/\\r?\\n/).filter(x=>x.trim()).length*8+2);
+    if(b.type==='flow')return Math.max(18,String(b.content||'').split(/\\r?\\n/).filter(x=>x.trim()).length*12+2);
+    if(b.type==='wordbank')return 18;
+    if(b.type==='bubble')return Math.max(20,Math.ceil(chars/50)*7+12);
+    if(b.type==='rubric')return Math.max(18,String(b.content||'').split(/\\r?\\n/).filter(x=>x.trim()).length*10+8);
+    if(b.type==='sequence')return Math.max(16,String(b.content||'').split(/\\r?\\n/).filter(x=>x.trim()).length*15+2);
     if(b.type==='table')return Math.max(1,Number(b.rows)||3)*10+4;
     if(b.type==='kanji'){const rows=Math.max(1,Number(b.rows)||2),size={small:10,medium:12,large:16}[b.cellSize]||14;return rows*size+(rows-1)*.6+3;}
     if(b.type==='choice')return Math.max(22,12+Math.ceil(chars/(55*width))*7+Math.ceil((b.choices||[]).length/2)*8);
@@ -320,6 +334,13 @@
     if(b.type==='image'||b.type==='navi') body=b.imageUrl?`<img src="${esc(b.imageUrl)}" alt="${b.type==='navi'?'学習イラスト':'挿入画像'}">`:'<div class="placeholder-image">画像を選んでください</div>';
     if(b.type==='reflection') { const gap=Math.max(3,Number(b.lineGap)||8), count=Math.max(1,Math.floor(Math.max(8,(Number(b.height)||30)-10)/gap)); body=`<div class="reflection-heading">ふりかえり</div><div class="reflection-label inline-edit" contenteditable="plaintext-only" data-inline-prop="content">${nl(b.content)}</div><div class="ruled-area ${b.lines===false?'no-lines':''}" style="--line-gap:${gap}mm">${b.lines===false?'':Array.from({length:count},()=>'<span class="ruled-line" aria-hidden="true"></span>').join('')}</div>`; }
     if(b.type==='score') body=`<div class="score-line">${esc(b.content||'得点')}　　／ ${Number(b.total)||100} 点</div>`;
+    if(b.type==='checklist'){const items=String(b.content||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="checklist-items">${items.map(x=>`<div class="checklist-item"><span class="check-box" aria-hidden="true"></span><span>${esc(x)}</span></div>`).join('')}</div>`;}
+    if(b.type==='compare') body=`<div class="compare-grid" style="--compare-height:${Math.max(12,Number(b.height)||42}mm"><section><h4>${esc(b.leftTitle||'前の考え')}</h4><div>${nl(b.leftContent||'')}</div></section><section><h4>${esc(b.rightTitle||'今の考え')}</h4><div>${nl(b.rightContent||'')}</div></section></div>`;
+    if(b.type==='flow'){const items=String(b.content||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="flow-items">${items.map((x,i)=>`${i?'<span class="flow-arrow" aria-hidden="true">→</span>':''}<div class="flow-step">${esc(x)}</div>`).join('')}</div>`;}
+    if(b.type==='wordbank'){const items=String(b.content||'').split(/[、,，\\n]/).map(x=>x.trim()).filter(Boolean);body=`<div class="wordbank-box"><strong>ヒント・使える言葉</strong><div>${items.map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>`;}
+    if(b.type==='bubble') body=`<div class="speech-card"><strong>${esc(b.label||'考え')}</strong><div>${nl(b.content)}</div></div>`;
+    if(b.type==='rubric'){const items=String(b.content||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);body=`<table class="rubric-table"><thead><tr><th>ふり返ること</th><th>できた</th><th>もう少し</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x)}</td><td>○</td><td>○</td></tr>`).join('')}</tbody></table>`;}
+    if(b.type==='sequence'){const items=String(b.content||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);body=`<div class="sequence-items">${items.map((x,i)=>`<div class="sequence-card"><span>${i+1}</span><div>${esc(x.replace(/^\\d+[.、．]?\\s*/,''))}</div></div>`).join('')}</div>`;}
     return `<section class="${blockClasses(b)}" style="${style}" data-id="${b.id}">${actionBar()}${body}</section>`;
   }
 
@@ -334,20 +355,23 @@
     const root=$('#settingsContent'),b=getSelected(); if(!b){root.innerHTML=$('#emptySettings').innerHTML;return;}
     const label=PARTS.find(x=>x[0]===b.type)?.[1]||b.type;
     let html=`<div class="settings-section"><h3>${label}</h3>`;
-    if(['heading','text','goal','question','choice','summary','reflection','score'].includes(b.type)) html+=field('文章','content',b.content,'textarea');
+    if(['heading','text','goal','question','choice','summary','reflection','score','checklist','flow','wordbank','bubble','rubric','sequence'].includes(b.type)) html+=field(b.type==='checklist'?'項目（1行に1つ）':b.type==='flow'?'流れ（1行に1つ）':b.type==='wordbank'?'言葉（読点や改行で区切る）':b.type==='rubric'?'評価項目（1行に1つ）':b.type==='sequence'?'順序（1行に1つ）':b.type==='bubble'?'発言・考え':'文章','content',b.content,'textarea');
+    if(b.type==='compare') html+=field('左の見出し','leftTitle',b.leftTitle||'前の考え')+field('左の記入内容','leftContent',b.leftContent||'','textarea')+field('右の見出し','rightTitle',b.rightTitle||'今の考え')+field('右の記入内容','rightContent',b.rightContent||'','textarea');
+    if(b.type==='bubble') html+=field('吹き出しの見出し','label',b.label||'考え');
     if(['question','choice'].includes(b.type)) html+=field('解答（先生用に表示）','answer',b.answer||'','textarea');
     if(b.type==='heading') html+=field('文字サイズ','fontSize',b.fontSize||15,'number')+segment('太字','bold',b.bold!==false,[['true','あり'],['false','なし']])+segment('背景','background',!!b.background,[['true','あり'],['false','なし']]);
     if(b.type==='text') html+=field('文字サイズ（pt）','fontSize',b.fontSize||10.5,'number')+field('行間','lineHeight',b.lineHeight||1.65,'number')+segment('枠','frame',!!b.frame,[['true','あり'],['false','なし']]);
     if(['question','choice'].includes(b.type)) html+=segment('問題番号','numbered',b.numbered!==false,[['true','あり'],['false','なし']]);
     if(b.type==='choice') html+=choiceSettings(b);
     if(b.type==='kanji') html+=field('見本（1マス目に薄く表示）','sample',b.sample||'')+`<div class="inline-fields">${field('行','rows',b.rows||2,'number')}${field('列','cols',b.cols||8,'number')}</div>`+segment('マスの大きさ','cellSize',b.cellSize||'medium',[['small','小'],['medium','中'],['large','大']]);
-    if(['ruled','calc','grid','image','navi','reflection','answerline'].includes(b.type)) html+=heightControl(b);
+    if(['ruled','calc','grid','image','navi','reflection','answerline','compare'].includes(b.type)) html+=heightControl(b);
     if(b.type==='ruled'||b.type==='reflection') html+=segment('罫線','lines',b.lines!==false,[['true','あり'],['false','なし']])+field('行の間隔（mm）','lineGap',b.lineGap||8,'number');
     if(b.type==='calc') html+=segment('計算欄','pattern',b.pattern||'blank',[['blank','白紙'],['lines','横罫'],['grid','方眼']]);
     if(b.type==='image') html+=`<label class="field"><span>端末から画像を選ぶ</span><input id="imageFile" type="file" accept="image/*"></label>`;
     if(b.type==='navi') html+=naviSettings(b);
     if(b.type==='table') html+=tableSettings(b);
     if(b.type==='score') html+=field('満点','total',b.total||100,'number');
+    if(b.type==='rubric') html+=`<p class="field-help">印刷後に、できた段階へ丸を付けて使います。</p>`;
     html+='</div><div class="settings-section">'+segment('横幅','width',Number(b.width)||100,[['100','100%'],['66','66%'],['50','50%'],['33','33%']]);
     if(['heading','text','question','choice','reflection','image','navi'].includes(b.type))html+=segment('配置','alignment',b.alignment||'left',[['left','左'],['center','中央'],['right','右']]);
     if(['heading','text','goal','question','choice','summary'].includes(b.type))html+=segment('文字方向','writingMode',b.writingMode||'auto',[['auto','自動'],['horizontal','横'],['vertical','縦']]);
@@ -477,6 +501,7 @@
       b.lineGap=bounded(b.lineGap,4,20,8);
       if('answer' in b)b.answer=shortText(b.answer,3000);
       if('sample' in b)b.sample=shortText(b.sample,200);
+      for(const key of ['leftTitle','rightTitle','leftContent','rightContent','label'])if(key in b)b[key]=shortText(b[key],2000);
       for(const key of ['bold','background','frame','numbered','lines'])if(key in b)b[key]=b[key]===true;
       if('rows' in b)b.rows=Math.round(bounded(b.rows,1,b.type==='kanji'?8:10,b.type==='kanji'?2:3));
       if('cols' in b)b.cols=Math.round(bounded(b.cols,1,b.type==='kanji'?16:8,b.type==='kanji'?8:3));
