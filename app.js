@@ -56,7 +56,7 @@
       ruled:{content:'',width:100,height:35,lines:true,lineGap:8,writingMode:'horizontal'},
       calc:{content:'',width:100,height:40,pattern:'blank',writingMode:'horizontal'},
       grid:{content:'',width:100,height:45,writingMode:'horizontal'},
-      kanji:{content:'',sample:'',width:100,rows:2,cols:8,cellSize:'medium',writingMode:'horizontal'},
+      kanji:{content:'',sample:'',width:100,rows:2,cols:11,cellSize:'medium',writingMode:'horizontal'},
       choice:{content:'問題文を入力してください。',answer:'',width:100,marker:'kana',choices:['選択肢1','選択肢2','選択肢3','選択肢4'],writingMode:'auto'},
       table:{content:'',width:100,rows:3,cols:3,cells:Array(9).fill(''),writingMode:'horizontal'},
       image:{content:'',width:100,height:45,imageUrl:'',alignment:'center',writingMode:'horizontal'},
@@ -369,7 +369,7 @@
       else body='<div class="calc-area blank"></div>';
     }
     if(b.type==='grid') body=`<div class="grid-area"><svg class="print-grid-svg" aria-hidden="true"><defs><pattern id="grid-${b.id}" width="18.8976" height="18.8976" patternUnits="userSpaceOnUse"><path d="M 18.8976 0 L 0 0 0 18.8976" fill="none" stroke="#777" stroke-width=".3mm"/></pattern></defs><rect width="100%" height="100%" fill="url(#grid-${b.id})"/></svg></div>`;
-    if(b.type==='kanji'){const size={small:10,medium:12,large:16}[b.cellSize]||14;const total=Math.max(1,Math.min(80,(b.rows||2)*(b.cols||8)));body=`<div class="kanji-practice-grid" style="--kanji-cols:${Math.max(1,Math.min(16,b.cols||8))};--kanji-size:${size}mm">${Array.from({length:total},(_,i)=>`<span class="kanji-cell ${i===0&&b.sample?'sample':''}">${i===0&&b.sample?esc(b.sample):''}</span>`).join('')}</div>`;}
+    if(b.type==='kanji'){const size={small:10,medium:12,large:16}[b.cellSize]||14;const total=Math.max(1,Math.min(80,(b.rows||2)*(b.cols||8)));body=`<div class="kanji-practice-grid" style="--kanji-cols:${Math.max(1,Math.min(16,b.cols||11))};--kanji-size:${size}mm">${Array.from({length:total},(_,i)=>`<span class="kanji-cell ${i===0&&b.sample?'sample':''}">${i===0&&b.sample?esc(b.sample):''}</span>`).join('')}</div>`;}
     if(b.type==='choice'){const marks=b.marker==='number'?['①','②','③','④','⑤','⑥']:['ア','イ','ウ','エ','オ','カ'];body=`<div class="block-question">${qNum}<div style="flex:1"><div class="content inline-edit" contenteditable="plaintext-only" data-inline-prop="content">${nl(b.content)}</div><div class="choices">${(b.choices||[]).map((x,i)=>`<div><span class="choice-mark">${marks[i]}</span><span contenteditable="plaintext-only" data-inline-list-prop="choices" data-inline-list-index="${i}">${nl(x)}</span></div>`).join('')}</div>${displayMode==='teacher'&&b.answer?`<div class="answer-display">答　${nl(b.answer)}</div>`:''}</div></div>`;}
     if(b.type==='table'){body=`<table class="worksheet-table"><tbody>${Array.from({length:b.rows||2},(_,r)=>`<tr>${Array.from({length:b.cols||2},(_,c)=>{const i=r*(b.cols||2)+c;return `<td contenteditable="true" data-table-cell="${i}">${nl((b.cells||[])[i]||'')}</td>`}).join('')}</tr>`).join('')}</tbody></table>`;}
     if(b.type==='image'||b.type==='navi') body=b.imageUrl?`<img src="${esc(b.imageUrl)}" alt="${b.type==='navi'?'学習イラスト':'挿入画像'}">`:'<div class="placeholder-image">画像を選んでください</div>';
