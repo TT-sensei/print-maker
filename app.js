@@ -195,6 +195,9 @@
   }
 
   function correctRenderedPagination(container,editing){
+    // Measure at true A4 scale; the editor and preview apply CSS zoom for display only.
+    const measuredPages=[...container.querySelectorAll('.page')];
+    measuredPages.forEach(page=>page.style.zoom='1');
     const makePage=()=>{
       const wrap=document.createElement('div');
       wrap.className='page-wrap';
@@ -225,6 +228,7 @@
       if(editing&&overflow)label.textContent+='・パーツが大きすぎます';
     });
     $('#pageCount').textContent=`${wraps.length}ページ`;
+    container.querySelectorAll('.page').forEach(page=>page.style.removeProperty('zoom'));
   }
 
   function renderHeader(){
