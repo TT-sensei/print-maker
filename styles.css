@@ -20,3 +20,29 @@
 .block-navi{padding:.5mm;align-self:flex-start;line-height:0}.block-navi img{max-width:100%;height:var(--block-h,32mm);display:inline-block;vertical-align:top}.page-row.navi-only.align-right{justify-content:flex-end}.page-row.navi-only.align-center{justify-content:center}.page-row.navi-only.align-left{justify-content:flex-start}
 
 :root{--worksheet-rule-width:.3mm;--worksheet-rule-color:#777}.block-reflection .reflection-label{border-bottom:var(--worksheet-rule-width,.3mm) solid var(--worksheet-rule-color,#777)}.worksheet-table td{border:var(--worksheet-rule-width,.3mm) solid var(--worksheet-rule-color,#777)}
+
+
+/* Print reliability: draw worksheet rules as foreground borders/SVG, not CSS backgrounds. */
+.block-ruled .ruled-area.no-lines,
+.block-reflection .ruled-area.no-lines{border:var(--worksheet-rule-width,.3mm) solid var(--worksheet-rule-color,#777);background:none}
+.block-ruled .ruled-area.no-lines .ruled-line,
+.block-reflection .ruled-area.no-lines .ruled-line{display:none}
+.block-calc .calc-area{position:relative;overflow:hidden;background:none!important}
+.block-calc.lines .calc-area{display:flex;flex-direction:column;justify-content:flex-start}
+.block-calc .calc-line{display:block;flex:0 0 8mm;height:8mm;border-bottom:var(--worksheet-rule-width,.3mm) solid var(--worksheet-rule-color,#777)}
+.block-calc.grid .calc-area,.block-grid .grid-area{background-image:none!important;position:relative;overflow:hidden}
+.block-grid .grid-area{position:relative}
+.print-grid-svg{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;overflow:hidden}
+.print-grid-svg path{fill:none;stroke:var(--worksheet-rule-color,#777);stroke-width:var(--worksheet-rule-width,.3mm)}
+.block-kanji .kanji-cell{position:relative;background-image:none!important}
+.block-kanji .kanji-cell::before,
+.block-kanji .kanji-cell::after{content:"";position:absolute;display:block;pointer-events:none}
+.block-kanji .kanji-cell::before{top:0;bottom:0;left:50%;border-left:var(--worksheet-rule-width,.3mm) solid var(--worksheet-rule-color,#777)}
+.block-kanji .kanji-cell::after{left:0;right:0;top:50%;border-top:var(--worksheet-rule-width,.3mm) solid var(--worksheet-rule-color,#777)}
+@media print{
+  .block-calc .calc-line,
+  .block-kanji .kanji-cell::before,
+  .block-kanji .kanji-cell::after,
+  .ruled-line{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  .print-grid-svg{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
