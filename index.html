@@ -9,17 +9,20 @@
 </head>
 <body>
   <section id="startScreen" class="start-screen">
-    <div class="start-card">
-      <div class="brand-mark" aria-hidden="true">▤</div>
-      <p class="eyebrow">先生のための、すぐ使えるプリント作り</p>
-      <h1>プリント工房</h1>
-      <p class="subtitle">パーツを組み合わせて、かんたんプリント作り</p>
-      <div class="start-actions">
-        <button class="start-action primary" data-start="new"><span>＋</span><b>新しいプリントを作る</b><small>教科や用途からひな形を選ぶ</small></button>
-        <button class="start-action" data-start="continue"><span>↻</span><b>前の続きを作る</b><small id="draftInfo">自動保存した続きから</small></button>
-        <button class="start-action" data-start="templates"><span>▣</span><b>マイテンプレート</b><small>いつもの形を使って作る</small></button>
+    <div class="start-card start-gallery-card">
+      <div class="start-brand-row">
+        <div class="brand-mark" aria-hidden="true">▤</div>
+        <div class="start-brand-copy"><p class="eyebrow">先生のためのプリント作り</p><h1>プリント工房</h1></div>
       </div>
-      <p class="local-note">データはこの端末のブラウザに保存されます</p>
+      <div class="start-gallery-heading">
+        <div><h2>どんなプリントを作りますか？</h2><p>見本を選ぶと、編集できるひな形が開きます。</p></div>
+        <div class="start-quick-actions">
+          <button class="start-quick-action" data-start="continue"><span>↻</span><b>前の続きを作る</b><small id="draftInfo">自動保存した続きから</small></button>
+          <button class="start-quick-action" data-start="templates"><span>▣</span><b>マイテンプレート</b><small>保存した形から作る</small></button>
+        </div>
+      </div>
+      <div id="startTemplateGrid" class="start-template-grid" aria-label="プリントのひな形一覧"></div>
+      <p class="local-note">ひな形を選んだあとも、文章やパーツは自由に編集できます。データはこの端末のブラウザに保存されます。</p>
     </div>
   </section>
 
