@@ -519,8 +519,9 @@
     let style=document.getElementById('printOrientationStyle');
     if(!style){style=document.createElement('style');style.id='printOrientationStyle';document.head.appendChild(style);}
     style.textContent=`@page{size:A4 ${worksheet.orientation==='landscape'?'landscape':'portrait'};margin:0}`;
-    // Re-render from the current worksheet before printing so the printout uses the latest content.
-    renderPagesInto($('#pages'),false);
+    // Keep the editor's direct-edit controls enabled after the print dialog closes.
+    // Print CSS hides editor-only controls, so the editable rendering is safe to print.
+    renderPagesInto($('#pages'),true);
     setTimeout(()=>window.print(),80);
   }
   function setZoom(v){zoom=Math.max(.4,Math.min(1.1,Math.round(v*10)/10));$('#zoomLabel').textContent=Math.round(zoom*100)+'%';document.documentElement.style.setProperty('--zoom',zoom);}
