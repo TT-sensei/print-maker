@@ -295,7 +295,7 @@
     return Math.max(14,Math.ceil(chars/(55*width))*7+7);
   }
 
-  function resolvedWriting(b){return b.writingMode==='horizontal'?'horizontal':b.writingMode==='vertical'?'vertical':worksheet.writingMode;}
+  function resolvedWriting(b){if(!['heading','text','goal','question','choice','summary'].includes(b.type))return 'horizontal';return b.writingMode==='horizontal'?'horizontal':b.writingMode==='vertical'?'vertical':worksheet.writingMode;}
   function blockClasses(b){return `block block-${b.type} ${selectedId===b.id?'selected':''} ${resolvedWriting(b)==='vertical'?'writing-vertical vertical-auto':'writing-horizontal'} ${b.background?'has-bg':''} ${b.frame?'has-frame':''}`;}
   function actionBar(){return `<div class="block-actions"><button data-action="up" title="上へ">↑</button><button data-action="down" title="下へ">↓</button><button data-action="duplicate" title="複製">⧉</button><button data-action="delete" title="削除">×</button></div>`;}
   function renderBlock(b,index){
@@ -349,8 +349,8 @@
     if(b.type==='table') html+=tableSettings(b);
     if(b.type==='score') html+=field('満点','total',b.total||100,'number');
     html+='</div><div class="settings-section">'+segment('横幅','width',Number(b.width)||100,[['100','100%'],['66','66%'],['50','50%'],['33','33%']]);
-    if(!['table','calc','grid','answerline'].includes(b.type))html+=segment('配置','alignment',b.alignment||'left',[['left','左'],['center','中央'],['right','右']]);
-    html+=segment('文字方向','writingMode',b.writingMode||'auto',[['auto','自動'],['horizontal','横'],['vertical','縦']]);
+    if(['heading','text','question','choice','reflection','image','navi'].includes(b.type))html+=segment('配置','alignment',b.alignment||'left',[['left','左'],['center','中央'],['right','右']]);
+    if(['heading','text','goal','question','choice','summary'].includes(b.type))html+=segment('文字方向','writingMode',b.writingMode||'auto',[['auto','自動'],['horizontal','横'],['vertical','縦']]);
     html+=`</div><button class="danger-btn">このパーツを削除</button>`;
     root.innerHTML=html;
     const danger=root.querySelector('.danger-btn');danger.onclick=()=>blockAction(b.id,'delete');
