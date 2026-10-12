@@ -60,7 +60,7 @@
       choice:{content:'問題文を入力してください。',answer:'',width:100,marker:'kana',choices:['選択肢1','選択肢2','選択肢3','選択肢4'],writingMode:'auto'},
       table:{content:'',width:100,rows:3,cols:3,cells:Array(9).fill(''),writingMode:'horizontal'},
       image:{content:'',width:100,height:45,imageUrl:'',alignment:'center',writingMode:'horizontal'},
-      navi:{content:'',width:33,height:32,imageUrl:NAVI_BASE+NAVI[0][1],alignment:'right',writingMode:'horizontal'},
+      navi:{content:'',width:25,height:32,imageUrl:NAVI_BASE+NAVI[0][1],alignment:'right',writingMode:'horizontal'},
       summary:{content:'学習のまとめを書きます。',width:100,alignment:'left',writingMode:'auto'},
       reflection:{content:'わかったこと',width:100,height:24,lines:true,writingMode:'auto'},
       score:{content:'得点',width:33,total:100,writingMode:'horizontal'},
@@ -276,7 +276,7 @@
     document.documentElement.style.setProperty('--subject',sub.color);
     document.documentElement.style.setProperty('--page-w',worksheet.orientation==='landscape'?'297mm':'210mm');
     document.documentElement.style.setProperty('--page-h',worksheet.orientation==='landscape'?'210mm':'297mm');
-    document.documentElement.style.setProperty('--page-pad',({narrow:9,standard:14,wide:20}[worksheet.margin]||14)+'mm');
+    document.documentElement.style.setProperty('--page-pad',({narrow:6,standard:10,wide:16}[worksheet.margin]||10)+'mm');
     document.documentElement.style.setProperty('--zoom',zoom);
     document.documentElement.style.setProperty('--base-font',({small:9.5,standard:10.5,large:12}[worksheet.fontSize]||10.5)+'pt');
     document.documentElement.style.setProperty('--base-leading',({narrow:1.35,standard:1.55,wide:1.8}[worksheet.lineHeight]||1.55));
@@ -342,11 +342,11 @@
   }
 
   function paginate(){
-    const pageH=worksheet.orientation==='landscape'?210:297, pad={narrow:9,standard:14,wide:20}[worksheet.margin]||14;
+    const pageH=worksheet.orientation==='landscape'?210:297, pad={narrow:6,standard:10,wide:16}[worksheet.margin]||10;
     const titleLines=Math.max(1,Math.ceil(String(worksheet.title||'').length/20));
     const subtitleLines=worksheet.subtitle?Math.max(1,Math.ceil(String(worksheet.subtitle).length/36)):0;
     const headerHeight=30+(titleLines-1)*12+Math.max(0,subtitleLines-1)*5;
-    const firstCapacity=pageH-pad*2-headerHeight, nextCapacity=pageH-pad*2;
+    const bottomPad=5; const firstCapacity=pageH-pad-bottomPad-headerHeight, nextCapacity=pageH-pad-bottomPad;
     const rows=[]; let row=[],used=0;
     worksheet.blocks.forEach((b,i)=>{ const w=Number(b.width)||100; if(row.length && used+w>101){rows.push(row);row=[];used=0;} row.push(b);used+=w;if(used>=99){rows.push(row);row=[];used=0;} if(i===worksheet.blocks.length-1&&row.length)rows.push(row); });
     const pages=[[]]; let pageIndex=0, usedH=0;
